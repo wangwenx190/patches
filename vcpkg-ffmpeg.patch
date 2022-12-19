@@ -1,4 +1,4 @@
-From fb08f20f9f58722fb8f0d98aedb84eb50695797c Mon Sep 17 00:00:00 2001
+From 37e5494f2b350c1069201d91a55a1cc755f1de06 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Mon, 4 Jul 2022 17:42:36 +0800
 Subject: [PATCH] wangwenx190: Disable debug configuration for release builds

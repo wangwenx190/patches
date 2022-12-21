@@ -1,4 +1,4 @@
-From 37e5494f2b350c1069201d91a55a1cc755f1de06 Mon Sep 17 00:00:00 2001
+From 38a7b708143080f9b338fe20cc73f225ed1ef491 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Mon, 4 Jul 2022 17:42:36 +0800
 Subject: [PATCH] wangwenx190: Disable debug configuration for release builds
@@ -9,10 +9,10 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/ports/ffmpeg/portfile.cmake b/ports/ffmpeg/portfile.cmake
-index f18677776..26e38da87 100644
+index 98fc5c9d6..9842a61b5 100644
 --- a/ports/ffmpeg/portfile.cmake
 +++ b/ports/ffmpeg/portfile.cmake
-@@ -52,7 +52,7 @@ else()
+@@ -53,7 +53,7 @@ else()
      set(LIB_PATH_VAR "LIBRARY_PATH")
  endif()
  
@@ -21,7 +21,7 @@ index f18677776..26e38da87 100644
  
  if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm")
    set(OPTIONS "${OPTIONS} --disable-asm --disable-x86asm")
-@@ -480,8 +480,8 @@ if(VCPKG_TARGET_IS_UWP)
+@@ -491,8 +491,8 @@ if(VCPKG_TARGET_IS_UWP)
  endif()
  
  # Note: --disable-optimizations can't be used due to https://ffmpeg.org/pipermail/libav-user/2013-March/003945.html

@@ -1,4 +1,4 @@
-From 0aa4a39b9f7b9f952dacf6206c9e066e6d715efa Mon Sep 17 00:00:00 2001
+From 5d13b13a9f738a155c596ca4fe5768ad366112c9 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -4557,10 +4557,10 @@ index 2751bc39d6..8e44999f52 100644
  
      // use "." as dir to get relative file paths
 diff --git a/src/tools/rcc/rcc.cpp b/src/tools/rcc/rcc.cpp
-index 3b5166a70e..5b47d44aaa 100644
+index 3331ffbb9d..8c696a28a1 100644
 --- a/src/tools/rcc/rcc.cpp
 +++ b/src/tools/rcc/rcc.cpp
-@@ -1122,7 +1122,7 @@ bool RCCResourceLibrary::writeDataBlobs()
+@@ -1123,7 +1123,7 @@ bool RCCResourceLibrary::writeDataBlobs()
      Q_ASSERT(m_errorDevice);
      switch (m_format) {
      case C_Code:
@@ -4569,7 +4569,7 @@ index 3b5166a70e..5b47d44aaa 100644
          break;
      case Python_Code:
          writeString("qt_resource_data = b\"\\\n");
-@@ -1166,7 +1166,7 @@ bool RCCResourceLibrary::writeDataBlobs()
+@@ -1167,7 +1167,7 @@ bool RCCResourceLibrary::writeDataBlobs()
      case Pass1:
          if (offset < 8)
              offset = 8;
@@ -4578,7 +4578,7 @@ index 3b5166a70e..5b47d44aaa 100644
          writeByteArray(QByteArray::number(offset));
          writeString("] = { 'Q', 'R', 'C', '_', 'D', 'A', 'T', 'A' };\n\n");
          break;
-@@ -1181,7 +1181,7 @@ bool RCCResourceLibrary::writeDataNames()
+@@ -1182,7 +1182,7 @@ bool RCCResourceLibrary::writeDataNames()
      switch (m_format) {
      case C_Code:
      case Pass1:
@@ -4587,7 +4587,7 @@ index 3b5166a70e..5b47d44aaa 100644
          break;
      case Python_Code:
          writeString("qt_resource_name = b\"\\\n");
-@@ -1243,7 +1243,7 @@ bool RCCResourceLibrary::writeDataStructure()
+@@ -1244,7 +1244,7 @@ bool RCCResourceLibrary::writeDataStructure()
      switch (m_format) {
      case C_Code:
      case Pass1:

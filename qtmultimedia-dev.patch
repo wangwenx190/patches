@@ -1,0 +1,43 @@
+From 692b990a35e75a3eff433608b96fdf8bc8794ec9 Mon Sep 17 00:00:00 2001
+From: Yuhang Zhao <2546789017@qq.com>
+Date: Fri, 30 Sep 2022 10:13:56 +0800
+Subject: [PATCH] FFmpeg: fix compilation error when linking against static
+ FFmpeg
+
+When I was trying to link to a static version of FFmpeg (while QtMM
+is still a shared library), I got some compliation errors:
+
+avformat.lib(tls_schannel.o) : error LNK2001: unresolved external symbol AcquireCredentialsHandleA
+avformat.lib(tls_schannel.o) : error LNK2001: unresolved external symbol QueryContextAttributesA
+plugins\multimedia\ffmpegmediaplugin.dll : fatal error LNK1120: 2 unresolved externals
+
+So we need to link to Secur32.lib [1][2] as well, and it's also safe for
+us to do so:
+(1) It's available since Windows Vista, so it can meet our system requirements.
+(2) As far as I know, MinGW also has this library, so it won't break MinGW builds.
+(3) If we don't use any symbols from Secur32.dll, we won't actually
+link to it in the end, thanks to the smart linker.
+
+[1] https://learn.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-acquirecredentialshandlea
+[2] https://learn.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-querycontextattributesa
+
+Change-Id: Ieb69257a2db9ae0206dce6a34bbd35880138abd2
+---
+ src/plugins/multimedia/ffmpeg/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/plugins/multimedia/ffmpeg/CMakeLists.txt b/src/plugins/multimedia/ffmpeg/CMakeLists.txt
+index 934f99c90..d596f46b6 100644
+--- a/src/plugins/multimedia/ffmpeg/CMakeLists.txt
++++ b/src/plugins/multimedia/ffmpeg/CMakeLists.txt
+@@ -97,6 +97,7 @@ qt_internal_extend_target(QFFmpegMediaPlugin CONDITION WIN32
+         Qt::MultimediaPrivate
+         WMF::WMF
+         mfreadwrite
++        Secur32 # Needed by static FFmpeg
+ )
+ 
+ qt_internal_extend_target(QFFmpegMediaPlugin CONDITION QT_FEATURE_cpp_winrt
+-- 
+2.39.0.windows.2
+

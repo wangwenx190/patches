@@ -1,4 +1,4 @@
-From fee0e15ec1924ce15a0d78b1efc7846f458fffcc Mon Sep 17 00:00:00 2001
+From 50458da8a1ab443d7a5b35f7d0f6c067d1af8716 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -31,8 +31,8 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/global/qlibraryinfo.h             |   5 +
  .../global/qoperatingsystemversion.cpp        |  10 +
  src/corelib/global/qoperatingsystemversion.h  |  40 ++
- .../global/qoperatingsystemversion_win.cpp    |  17 +-
- src/corelib/global/qsysinfo.cpp               |  32 +-
+ .../global/qoperatingsystemversion_win.cpp    |  20 +-
+ src/corelib/global/qsysinfo.cpp               |  34 +-
  src/corelib/kernel/qcoreapplication.cpp       |  11 +
  src/corelib/kernel/qeventdispatcher_win.cpp   |  12 +-
  src/corelib/kernel/qfunctions_win.cpp         |  10 +-
@@ -57,7 +57,8 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../windows/apisupport/uiapropertyids_p.h     | 188 -------
  .../apisupport/uiaserverinterfaces_p.h        | 367 -------------
  .../windows/apisupport/uiatypes_p.h           | 157 ------
- src/gui/opengl/qopengl.cpp                    |  29 +-
+ src/gui/configure.cmake                       |  10 +-
+ src/gui/opengl/qopengl.cpp                    |  32 +-
  src/gui/rhi/qrhid3d11.cpp                     | 480 +++++++++++-------
  src/gui/rhi/qrhid3d11_p_p.h                   |   3 +-
  .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
@@ -89,7 +90,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 243 +++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 70 files changed, 1643 insertions(+), 2015 deletions(-)
+ 71 files changed, 1655 insertions(+), 2021 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -547,15 +548,17 @@ index 1e4eb5cc49..499a196fa7 100644
          : QOperatingSystemVersionBase(osversion) {}
  
 diff --git a/src/corelib/global/qoperatingsystemversion_win.cpp b/src/corelib/global/qoperatingsystemversion_win.cpp
-index a209fb17b6..5fa500b4dc 100644
+index a209fb17b6..50edb719fd 100644
 --- a/src/corelib/global/qoperatingsystemversion_win.cpp
 +++ b/src/corelib/global/qoperatingsystemversion_win.cpp
-@@ -51,7 +51,16 @@ OSVERSIONINFOEX qWindowsVersionInfo()
+@@ -51,7 +51,18 @@ OSVERSIONINFOEX qWindowsVersionInfo()
              result.wServicePackMinor = 0;
  
              const QByteArray winVerOverride = qgetenv("QT_WINVER_OVERRIDE");
 -            if (winVerOverride == "WINDOWS10" || winVerOverride == "2016"
-+            if (winVerOverride == "WINDOWS7" || winVerOverride == "2008_R2") {
++            if (winVerOverride == "WINDOWSVISTA" || winVerOverride == "2008") {
++                result.dwMajorVersion = 6;
++            } else if (winVerOverride == "WINDOWS7" || winVerOverride == "2008_R2") {
 +                result.dwMajorVersion = 6;
 +                result.dwMinorVersion = 1;
 +            } else if (winVerOverride == "WINDOWS8" || winVerOverride == "2012") {
@@ -568,12 +571,13 @@ index a209fb17b6..5fa500b4dc 100644
                  || winVerOverride == "2019" || winVerOverride == "2022") {
                  result.dwMajorVersion = 10;
              } else if (winVerOverride == "WINDOWS11") {
-@@ -61,7 +70,11 @@ OSVERSIONINFOEX qWindowsVersionInfo()
+@@ -61,7 +72,12 @@ OSVERSIONINFOEX qWindowsVersionInfo()
                  return realResult;
              }
  
 -            if (winVerOverride == "2016" || winVerOverride == "2019"
-+            if (winVerOverride == "2008_R2"
++            if (winVerOverride == "2008"
++                || winVerOverride == "2008_R2"
 +                || winVerOverride == "2012"
 +                || winVerOverride == "2012_R2"
 +                || winVerOverride == "2016"
@@ -582,7 +586,7 @@ index a209fb17b6..5fa500b4dc 100644
                  // If the current host OS is a domain controller and the override OS
                  // is also a server type OS, preserve that information
 diff --git a/src/corelib/global/qsysinfo.cpp b/src/corelib/global/qsysinfo.cpp
-index 9df9d96b5e..95bcb1a936 100644
+index 9df9d96b5e..8c1ca09f7b 100644
 --- a/src/corelib/global/qsysinfo.cpp
 +++ b/src/corelib/global/qsysinfo.cpp
 @@ -165,12 +165,17 @@ static inline QString windowsDisplayVersion()
@@ -604,10 +608,12 @@ index 9df9d96b5e..95bcb1a936 100644
  static QString winSp_helper()
  {
      const auto osv = qWindowsVersionInfo();
-@@ -194,6 +199,12 @@ static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSyst
+@@ -194,6 +199,14 @@ static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSyst
  
  #define Q_WINVER(major, minor) (major << 8 | minor)
      switch (Q_WINVER(osver.dwMajorVersion, osver.dwMinorVersion)) {
++    case Q_WINVER(6, 0):
++        return workstation ? "Vista" : "Server 2008";
 +    case Q_WINVER(6, 1):
 +        return workstation ? "7" : "Server 2008 R2";
 +    case Q_WINVER(6, 2):
@@ -617,7 +623,7 @@ index 9df9d96b5e..95bcb1a936 100644
      case Q_WINVER(10, 0):
          if (workstation) {
              if (osver.dwBuildNumber >= 22000)
-@@ -885,10 +896,21 @@ QString QSysInfo::prettyProductName()
+@@ -885,10 +898,21 @@ QString QSysInfo::prettyProductName()
      return result + " ("_L1 + versionString + u')';
  #  else
      // (resembling winver.exe): Windows 10 "Windows 10 Version 1809"
@@ -2573,15 +2579,43 @@ index 465bd07a07..0000000000
 -};
 -
 -#endif
+diff --git a/src/gui/configure.cmake b/src/gui/configure.cmake
+index 71ab3ee935..cf6bc15c62 100644
+--- a/src/gui/configure.cmake
++++ b/src/gui/configure.cmake
+@@ -563,9 +563,8 @@ qt_config_compile_test(directwrite
+ "#include <dwrite_2.h>
+ int main(int, char **)
+ {
+-    IUnknown *factory = nullptr;
+-    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory2),
+-                        &factory);
++    IDWriteFactory2 *factory = nullptr;
++    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, IID_PPV_ARGS(&factory));
+     return 0;
+ }
+ ")
+@@ -579,9 +578,8 @@ qt_config_compile_test(directwrite3
+ "#include <dwrite_3.h>
+ int main(int, char **)
+ {
+-    IUnknown *factory = nullptr;
+-    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3),
+-                        &factory);
++    IDWriteFactory3 *factory = nullptr;
++    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, IID_PPV_ARGS(&factory));
+     return 0;
+ }
+ ")
 diff --git a/src/gui/opengl/qopengl.cpp b/src/gui/opengl/qopengl.cpp
-index 7c997103d5..d52d23ebe1 100644
+index 7c997103d5..2821915c92 100644
 --- a/src/gui/opengl/qopengl.cpp
 +++ b/src/gui/opengl/qopengl.cpp
-@@ -195,13 +195,32 @@ struct OsTypeTerm
+@@ -195,13 +195,35 @@ struct OsTypeTerm
      static QString hostOs();
      static QVersionNumber hostKernelVersion() { return QVersionNumber::fromString(QSysInfo::kernelVersion()); }
      static QString hostOsRelease() {
-+        QString ver;
++        QString ver = {};
  #ifdef Q_OS_WIN
 -        if (QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows11)
 -            return u"11"_s;
@@ -2591,6 +2625,9 @@ index 7c997103d5..d52d23ebe1 100644
 +        const auto osver = QOperatingSystemVersion::current();
 +#define Q_WINVER(major, minor) (major << 8 | minor)
 +        switch (Q_WINVER(osver.majorVersion(), osver.minorVersion())) {
++        case Q_WINVER(6, 0):
++            ver = QStringLiteral("Vista");
++            break;
 +        case Q_WINVER(6, 1):
 +            ver = QStringLiteral("7");
 +            break;

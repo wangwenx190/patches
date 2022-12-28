@@ -1,4 +1,4 @@
-From b03e538bc38865fd64f53e37df0aa482d20efec4 Mon Sep 17 00:00:00 2001
+From fee0e15ec1924ce15a0d78b1efc7846f458fffcc Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -7,9 +7,9 @@ Important changes list:
 
 01. Win32: Remove WS_POPUP for most cases.
 02. Win32: Remove UI Automation wrapper layer.
-03. Win32: Remove the Direct2D QPA, it's useless and has bad performance.
-04. Remove the offscreen QPA, it's useless.
-05. Remove the minimal QPA, it's useless.
+03. Win32: Disable the Direct2D QPA, it's useless and has bad performance.
+04. Disable the offscreen QPA, it's useless.
+05. Disable the minimal QPA, it's useless.
 06. Win32: Add more entries to QOperatingSystemVersion.
 07. Win32: Add environment variable to add offset to the system menu.
 08. Win32: Add environment variable to disable bitmap redirection.
@@ -23,69 +23,73 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtBuild.cmake                           |   7 +
  cmake/QtCompilerOptimization.cmake            |  15 +-
  cmake/QtInternalTargets.cmake                 |  37 +-
- cmake/VC-LTL.cmake                            |  94 +++++
+ cmake/VC-LTL.cmake                            |  94 ++++
  configure.cmake                               |   5 +
  qt_cmdline.cmake                              |   1 +
  src/corelib/CMakeLists.txt                    |   2 +
  src/corelib/global/qlibraryinfo.cpp           |  20 +-
  src/corelib/global/qlibraryinfo.h             |   5 +
- .../global/qoperatingsystemversion.cpp        |   7 +
- src/corelib/global/qoperatingsystemversion.h  |  37 ++
+ .../global/qoperatingsystemversion.cpp        |  10 +
+ src/corelib/global/qoperatingsystemversion.h  |  40 ++
  .../global/qoperatingsystemversion_win.cpp    |  17 +-
  src/corelib/global/qsysinfo.cpp               |  32 +-
  src/corelib/kernel/qcoreapplication.cpp       |  11 +
- src/corelib/kernel/qeventdispatcher_win.cpp   |  13 +-
- src/corelib/kernel/qfunctions_win.cpp         |  13 +-
+ src/corelib/kernel/qeventdispatcher_win.cpp   |  12 +-
+ src/corelib/kernel/qfunctions_win.cpp         |  10 +-
+ src/corelib/plugin/qsystemlibrary.cpp         |  39 +-
  src/corelib/text/qlocale_win.cpp              |  23 +-
- src/corelib/thread/qfutex_p.h                 |  76 +++-
+ src/corelib/thread/qfutex_p.h                 |  76 ++-
  src/corelib/thread/qlocking_p.h               |   7 +-
  src/corelib/thread/qmutex.cpp                 |   2 +
  src/corelib/thread/qmutex_p.h                 |   9 +-
  src/corelib/thread/qmutex_win.cpp             |  30 ++
  src/corelib/thread/qwaitcondition_p.h         |   7 +-
  src/gui/CMakeLists.txt                        |  16 -
- .../windows/apisupport/qwindowsuiawrapper.cpp |  89 -----
- .../windows/apisupport/qwindowsuiawrapper_p.h |  67 ----
+ .../windows/apisupport/qwindowsuiawrapper.cpp |  89 ----
+ .../windows/apisupport/qwindowsuiawrapper_p.h |  67 ---
  .../windows/apisupport/uiaattributeids_p.h    |  63 ---
- .../apisupport/uiaclientinterfaces_p.h        | 230 -----------
+ .../apisupport/uiaclientinterfaces_p.h        | 230 ---------
  .../windows/apisupport/uiacontroltypeids_p.h  |  60 ---
- .../windows/apisupport/uiaerrorids_p.h        |  26 --
- .../windows/apisupport/uiaeventids_p.h        |  54 ---
+ .../windows/apisupport/uiaerrorids_p.h        |  26 -
+ .../windows/apisupport/uiaeventids_p.h        |  54 --
  .../windows/apisupport/uiageneralids_p.h      |  21 -
- .../windows/apisupport/uiapatternids_p.h      |  53 ---
- .../windows/apisupport/uiapropertyids_p.h     | 188 ---------
- .../apisupport/uiaserverinterfaces_p.h        | 367 ------------------
- .../windows/apisupport/uiatypes_p.h           | 157 --------
+ .../windows/apisupport/uiapatternids_p.h      |  53 --
+ .../windows/apisupport/uiapropertyids_p.h     | 188 -------
+ .../apisupport/uiaserverinterfaces_p.h        | 367 -------------
+ .../windows/apisupport/uiatypes_p.h           | 157 ------
  src/gui/opengl/qopengl.cpp                    |  29 +-
- src/gui/rhi/qrhid3d11.cpp                     | 301 ++++++++------
- src/gui/rhi/qrhid3d11_p_p.h                   |   1 +
+ src/gui/rhi/qrhid3d11.cpp                     | 480 +++++++++++-------
+ src/gui/rhi/qrhid3d11_p_p.h                   |   3 +-
+ .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
+ src/gui/text/windows/qwindowsfontdatabase.cpp |   3 +-
  .../text/windows/qwindowsfontdatabasebase.cpp |   9 +-
- .../qnetworklistmanagerevents.cpp             |  54 ++-
+ .../windows/qwindowsfontenginedirectwrite.cpp |   9 +-
+ .../qnetworklistmanagerevents.cpp             |  54 +-
  src/plugins/platforms/CMakeLists.txt          |   9 -
  src/plugins/platforms/windows/CMakeLists.txt  |   2 +
- .../platforms/windows/qwin10helpers.cpp       |  39 +-
+ .../platforms/windows/qwin10helpers.cpp       |  43 +-
  .../platforms/windows/qwindowsapplication.cpp |  12 +-
- .../platforms/windows/qwindowscontext.cpp     | 205 +++++++++-
- .../platforms/windows/qwindowscontext.h       | 108 +++++-
+ .../platforms/windows/qwindowscontext.cpp     | 205 +++++++-
+ .../platforms/windows/qwindowscontext.h       | 108 +++-
  .../platforms/windows/qwindowsdrag.cpp        |   7 +-
  .../platforms/windows/qwindowsintegration.cpp |  29 +-
  .../platforms/windows/qwindowskeymapper.cpp   |  18 +-
  .../windows/qwindowspointerhandler.cpp        |  25 +-
- .../platforms/windows/qwindowsscreen.cpp      |  45 +--
- .../platforms/windows/qwindowstheme.cpp       | 135 ++++---
- .../platforms/windows/qwindowswindow.cpp      |  82 ++--
+ .../platforms/windows/qwindowsscreen.cpp      |  45 +-
+ .../platforms/windows/qwindowstheme.cpp       | 135 +++--
+ .../platforms/windows/qwindowswindow.cpp      |  84 +--
  .../uiautomation/qwindowsuiaaccessibility.cpp |   9 +-
  .../uiautomation/qwindowsuiabaseprovider.h    |   4 +-
- .../uiautomation/qwindowsuiamainprovider.cpp  |  53 ++-
+ .../uiautomation/qwindowsuiamainprovider.cpp  |  53 +-
  .../windows/uiautomation/qwindowsuiautils.h   |   2 +-
  .../windowsvista/qwindowsvistastyle.cpp       |  31 ++
  .../windowsvista/qwindowsvistastyle_p_p.h     |   1 +
  src/tools/rcc/main.cpp                        |   7 +-
  src/tools/rcc/rcc.cpp                         |   8 +-
- src/widgets/dialogs/qwizard.cpp               |  72 +++-
- src/widgets/dialogs/qwizard_win.cpp           | 243 +++++++-----
+ src/widgets/dialogs/qwizard.cpp               |  72 ++-
+ src/widgets/dialogs/qwizard_win.cpp           | 243 +++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 66 files changed, 1486 insertions(+), 1926 deletions(-)
+ 70 files changed, 1643 insertions(+), 2015 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -443,10 +447,20 @@ index d4e8f8b050..6cd0b448cf 100644
  
  #endif // QLIBRARYINFO_H
 diff --git a/src/corelib/global/qoperatingsystemversion.cpp b/src/corelib/global/qoperatingsystemversion.cpp
-index b9da31149e..38f7a3b055 100644
+index b9da31149e..49f30720bd 100644
 --- a/src/corelib/global/qoperatingsystemversion.cpp
 +++ b/src/corelib/global/qoperatingsystemversion.cpp
-@@ -393,6 +393,13 @@ const QOperatingSystemVersion QOperatingSystemVersion::Windows8_1 =
+@@ -361,6 +361,9 @@ bool QOperatingSystemVersionBase::isAnyOfType(std::initializer_list<OSType> type
+ 
+ #ifndef QT_BOOTSTRAPPED
+ 
++const QOperatingSystemVersion QOperatingSystemVersion::WindowsVista =
++    QOperatingSystemVersion(QOperatingSystemVersion::Windows, 6, 0);
++
+ /*!
+     \variable QOperatingSystemVersion::Windows7
+     \brief a version corresponding to Windows 7 (version 6.1).
+@@ -393,6 +396,13 @@ const QOperatingSystemVersion QOperatingSystemVersion::Windows8_1 =
  const QOperatingSystemVersion QOperatingSystemVersion::Windows10 =
      QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10);
  
@@ -461,10 +475,26 @@ index b9da31149e..38f7a3b055 100644
      \variable QOperatingSystemVersion::Windows10_1809
      \brief a version corresponding to Windows 10 October 2018 Update
 diff --git a/src/corelib/global/qoperatingsystemversion.h b/src/corelib/global/qoperatingsystemversion.h
-index 1e4eb5cc49..8523df1e19 100644
+index 1e4eb5cc49..499a196fa7 100644
 --- a/src/corelib/global/qoperatingsystemversion.h
 +++ b/src/corelib/global/qoperatingsystemversion.h
-@@ -188,6 +188,12 @@ public:
+@@ -123,6 +123,7 @@ public:
+     // until Qt7
+     // @note: New entries should be added after the if-def-ery until Qt 7!!
+ #if QT_VERSION < QT_VERSION_CHECK(7, 0, 0) && !defined(QT_BOOTSTRAPPED)
++    static const QOperatingSystemVersion WindowsVista;
+     static const QOperatingSystemVersion Windows7;
+     static const QOperatingSystemVersion Windows8;
+     static const QOperatingSystemVersion Windows8_1;
+@@ -153,6 +154,7 @@ public:
+     static const QOperatingSystemVersion Android10;
+     static const QOperatingSystemVersion Android11;
+ #else
++    static constexpr QOperatingSystemVersionBase WindowsVista { QOperatingSystemVersionBase::Windows, 6, 0 };
+     static constexpr QOperatingSystemVersionBase Windows7 { QOperatingSystemVersionBase::Windows, 6, 1 };
+     static constexpr QOperatingSystemVersionBase Windows8 { QOperatingSystemVersionBase::Windows, 6, 2 };
+     static constexpr QOperatingSystemVersionBase Windows8_1 { QOperatingSystemVersionBase::Windows, 6, 3 };
+@@ -188,6 +190,12 @@ public:
      static constexpr QOperatingSystemVersionBase Android11 { QOperatingSystemVersionBase::Android, 11, 0 };
  #endif // New (static constexpr) entries go here, only cherry-pick as far back as 6.3 (QTBUG-97808):
  
@@ -477,17 +507,18 @@ index 1e4eb5cc49..8523df1e19 100644
      static constexpr QOperatingSystemVersionBase Windows10_1809 { QOperatingSystemVersionBase::Windows, 10, 0, 17763 }; // RS5
      static constexpr QOperatingSystemVersionBase Windows10_1903 { QOperatingSystemVersionBase::Windows, 10, 0, 18362 }; // 19H1
      static constexpr QOperatingSystemVersionBase Windows10_1909 { QOperatingSystemVersionBase::Windows, 10, 0, 18363 }; // 19H2
-@@ -206,6 +212,37 @@ public:
+@@ -206,6 +214,38 @@ public:
  
      static constexpr QOperatingSystemVersionBase MacOSVentura { QOperatingSystemVersionBase::MacOS, 13, 0 };
  
 +#ifdef Q_OS_WINDOWS
 +#  define MAKE_VERSION_FUNCTION(Name, Version) \
-+    static bool isWin##Name##OrGreater() \
++    [[nodiscard]] static inline bool isWin##Name##OrGreater() \
 +    { \
 +        static const bool result = QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows##Version; \
 +        return result; \
 +    }
++    MAKE_VERSION_FUNCTION(Vista, Vista)
 +    MAKE_VERSION_FUNCTION(7, 7)
 +    MAKE_VERSION_FUNCTION(8, 8)
 +    MAKE_VERSION_FUNCTION(8Point1, 8_1)
@@ -649,10 +680,18 @@ index d9a42413e4..2bc9ec726d 100644
  #ifdef Q_OS_WASM
      emscripten::val hardwareConcurrency = emscripten::val::global("navigator")["hardwareConcurrency"];
 diff --git a/src/corelib/kernel/qeventdispatcher_win.cpp b/src/corelib/kernel/qeventdispatcher_win.cpp
-index 1c54c97514..3577cb5f52 100644
+index 1c54c97514..0da2185811 100644
 --- a/src/corelib/kernel/qeventdispatcher_win.cpp
 +++ b/src/corelib/kernel/qeventdispatcher_win.cpp
-@@ -18,6 +18,8 @@
+@@ -6,7 +6,6 @@
+ 
+ #include "qcoreapplication.h"
+ #include <private/qsystemlibrary_p.h>
+-#include "qoperatingsystemversion.h"
+ #include "qpair.h"
+ #include "qset.h"
+ #include "qsocketnotifier.h"
+@@ -18,6 +17,8 @@
  
  QT_BEGIN_NAMESPACE
  
@@ -661,38 +700,35 @@ index 1c54c97514..3577cb5f52 100644
  #ifndef TIME_KILL_SYNCHRONOUS
  #  define TIME_KILL_SYNCHRONOUS 0x0100
  #endif
-@@ -355,8 +357,15 @@ void QEventDispatcherWin32Private::registerTimer(WinTimerInfo *t)
+@@ -355,8 +356,13 @@ void QEventDispatcherWin32Private::registerTimer(WinTimerInfo *t)
      }
  
      if (!ok) {
 -        // user normal timers for (Very)CoarseTimers, or if no more multimedia timers available
 -        ok = SetCoalescableTimer(internalHwnd, t->timerId, interval, nullptr, tolerance);
-+        if (QOperatingSystemVersion::isWin8OrGreater()) {
-+            static const auto pSetCoalescableTimer =
-+                reinterpret_cast<decltype(&::SetCoalescableTimer)>(
-+                    QSystemLibrary::resolve(u"user32"_s, "SetCoalescableTimer"));
-+            if (pSetCoalescableTimer) {
-+                // user normal timers for (Very)CoarseTimers, or if no more multimedia timers available
-+                ok = pSetCoalescableTimer(internalHwnd, t->timerId, interval, nullptr, tolerance);
-+            }
++        static const auto pSetCoalescableTimer =
++            reinterpret_cast<decltype(&::SetCoalescableTimer)>(
++                QSystemLibrary::resolve(u"user32"_s, "SetCoalescableTimer"));
++        if (pSetCoalescableTimer) {
++            // user normal timers for (Very)CoarseTimers, or if no more multimedia timers available
++            ok = pSetCoalescableTimer(internalHwnd, t->timerId, interval, nullptr, tolerance);
 +        }
      }
      if (!ok)
          ok = SetTimer(internalHwnd, t->timerId, interval, nullptr);
 diff --git a/src/corelib/kernel/qfunctions_win.cpp b/src/corelib/kernel/qfunctions_win.cpp
-index ed0e25467c..64108cce84 100644
+index ed0e25467c..2022ff2f24 100644
 --- a/src/corelib/kernel/qfunctions_win.cpp
 +++ b/src/corelib/kernel/qfunctions_win.cpp
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,7 @@
  #include "qfunctions_win_p.h"
  
  #include <QtCore/qdebug.h>
-+#include <QtCore/qoperatingsystemversion.h>
 +#include <QtCore/private/qsystemlibrary_p.h>
  
  #include <combaseapi.h>
  #include <objbase.h>
-@@ -15,6 +17,8 @@
+@@ -15,6 +16,8 @@
  
  QT_BEGIN_NAMESPACE
  
@@ -701,12 +737,10 @@ index ed0e25467c..64108cce84 100644
  QComHelper::QComHelper(COINIT concurrencyModel)
  {
      // Avoid overhead of initializing and using obsolete technology
-@@ -44,8 +48,15 @@ bool qt_win_hasPackageIdentity()
+@@ -44,8 +47,13 @@ bool qt_win_hasPackageIdentity()
  {
  #if defined(HAS_APPMODEL)
      static const bool hasPackageIdentity = []() {
-+        if (!QOperatingSystemVersion::isWin8OrGreater())
-+            return false;
 +        static const auto pGetCurrentPackageFullName =
 +            reinterpret_cast<decltype(&::GetCurrentPackageFullName)>(
 +                QSystemLibrary::resolve(u"kernel32"_s, "GetCurrentPackageFullName"));
@@ -718,6 +752,77 @@ index ed0e25467c..64108cce84 100644
          case ERROR_INSUFFICIENT_BUFFER:
              return true;
          case APPMODEL_ERROR_NO_PACKAGE:
+diff --git a/src/corelib/plugin/qsystemlibrary.cpp b/src/corelib/plugin/qsystemlibrary.cpp
+index d3dff226d9..22b4f04340 100644
+--- a/src/corelib/plugin/qsystemlibrary.cpp
++++ b/src/corelib/plugin/qsystemlibrary.cpp
+@@ -42,9 +42,9 @@ using namespace Qt::StringLiterals;
+ extern QString qAppFileName();
+ #endif
+ 
+-static QString qSystemDirectory()
++static inline QString qSystemDirectory()
+ {
+-    static const QString result = []() -> QString {
++    static const auto result = []() -> QString {
+         QVarLengthArray<wchar_t, MAX_PATH> fullPath = {};
+         UINT retLen = ::GetSystemDirectoryW(fullPath.data(), MAX_PATH);
+         if (retLen > MAX_PATH) {
+@@ -57,10 +57,32 @@ static QString qSystemDirectory()
+     return result;
+ }
+ 
++static inline bool isLoadFromSystem32Available()
++{
++    static const auto result = []() -> bool {
++        const HMODULE library = ::LoadLibraryW(L"kernel32");
++        if (!library)
++            return false;
++        const bool ret = ::GetProcAddress(library, "AddDllDirectory") != nullptr;
++        ::FreeLibrary(library);
++        return ret;
++    }();
++    return result;
++}
++
+ HINSTANCE QSystemLibrary::load(const wchar_t *libraryName, bool onlySystemDirectory /* = true */)
+ {
+-    if (onlySystemDirectory)
+-        return ::LoadLibraryExW(libraryName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
++    const QString fileName = QString::fromWCharArray(libraryName);
++
++    if (onlySystemDirectory) {
++        if (isLoadFromSystem32Available())
++            return ::LoadLibraryExW(libraryName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
++        QString path = qSystemDirectory();
++        if (!path.endsWith(u'\\'))
++            path.append(u'\\');
++        path.append(fileName);
++        return ::LoadLibraryW(reinterpret_cast<const wchar_t *>(path.utf16()));
++    }
+ 
+     QStringList searchOrder;
+ 
+@@ -72,16 +94,13 @@ HINSTANCE QSystemLibrary::load(const wchar_t *libraryName, bool onlySystemDirect
+     const QString PATH(QLatin1StringView(qgetenv("PATH")));
+     searchOrder << PATH.split(u';', Qt::SkipEmptyParts);
+ 
+-    const QString fileName = QString::fromWCharArray(libraryName);
+-
+     // Start looking in the order specified
+-    for (int i = 0; i < searchOrder.count(); ++i) {
++    for (int i = 0; i != searchOrder.count(); ++i) {
+         QString fullPathAttempt = searchOrder.at(i);
+-        if (!fullPathAttempt.endsWith(u'\\')) {
++        if (!fullPathAttempt.endsWith(u'\\'))
+             fullPathAttempt.append(u'\\');
+-        }
+         fullPathAttempt.append(fileName);
+-        HINSTANCE inst = ::LoadLibrary(reinterpret_cast<const wchar_t *>(fullPathAttempt.utf16()));
++        const HINSTANCE inst = ::LoadLibraryW(reinterpret_cast<const wchar_t *>(fullPathAttempt.utf16()));
+         if (inst != nullptr)
+             return inst;
+     }
 diff --git a/src/corelib/text/qlocale_win.cpp b/src/corelib/text/qlocale_win.cpp
 index 67fac95304..0486aa84b4 100644
 --- a/src/corelib/text/qlocale_win.cpp
@@ -2511,7 +2616,7 @@ index 7c997103d5..d52d23ebe1 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index 8da44eee32..6b10b923aa 100644
+index 8da44eee32..206376f311 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -9,6 +9,8 @@
@@ -2523,29 +2628,44 @@ index 8da44eee32..6b10b923aa 100644
  #include <QtCore/private/qsystemerror_p.h>
  
  #include <d3dcompiler.h>
-@@ -129,16 +131,33 @@ inline Int aligned(Int v, Int byteAlign)
+@@ -109,7 +111,7 @@ QRhiD3D11::QRhiD3D11(QRhiD3D11InitParams *params, QRhiD3D11NativeHandles *import
+         if (importParams->dev && importParams->context) {
+             dev = reinterpret_cast<ID3D11Device *>(importParams->dev);
+             ID3D11DeviceContext *ctx = reinterpret_cast<ID3D11DeviceContext *>(importParams->context);
+-            if (SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void **>(&context)))) {
++            if (SUCCEEDED(ctx->QueryInterface(IID_PPV_ARGS(&context)))) {
+                 // get rid of the ref added by QueryInterface
+                 ctx->Release();
+                 importedDeviceAndContext = true;
+@@ -129,16 +131,54 @@ inline Int aligned(Int v, Int byteAlign)
      return (v + byteAlign - 1) & ~(byteAlign - 1);
  }
  
-+static IDXGIFactory1 *createDXGIFactory1()
-+{
-+    IDXGIFactory1 *result = nullptr;
-+    const HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void **>(&result));
+-static IDXGIFactory1 *createDXGIFactory2()
++static bool g_using_dxgi_1_0 = false;
++
++static IDXGIFactory *createDXGIFactory()
+ {
++    static const auto pCreateDXGIFactory =
++        reinterpret_cast<decltype(&::CreateDXGIFactory)>(
++            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory"));
++    if (!pCreateDXGIFactory)
++        return nullptr;
++    IDXGIFactory *result = nullptr;
++    const HRESULT hr = pCreateDXGIFactory(IID_PPV_ARGS(&result));
 +    if (SUCCEEDED(hr))
 +        return result;
-+    qWarning("CreateDXGIFactory1() failed to create DXGI factory: %s",
++    qWarning("CreateDXGIFactory() failed to create DXGI factory: %s",
 +        qPrintable(QSystemError::windowsComString(hr)));
 +    return nullptr;
 +}
 +
- static IDXGIFactory1 *createDXGIFactory2()
- {
-+    if (!QOperatingSystemVersion::isWin8Point1OrGreater())
-+        return nullptr;
-+    static const auto pCreateDXGIFactory2 =
-+        reinterpret_cast<decltype(&::CreateDXGIFactory2)>(
-+            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory2"));
-+    if (!pCreateDXGIFactory2)
++static IDXGIFactory1 *createDXGIFactory1()
++{
++    static const auto pCreateDXGIFactory1 =
++        reinterpret_cast<decltype(&::CreateDXGIFactory1)>(
++            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory1"));
++    if (!pCreateDXGIFactory1)
 +        return nullptr;
      IDXGIFactory1 *result = nullptr;
 -    const HRESULT hr = CreateDXGIFactory2(0, __uuidof(IDXGIFactory2), reinterpret_cast<void **>(&result));
@@ -2555,7 +2675,23 @@ index 8da44eee32..6b10b923aa 100644
 -        result = nullptr;
 -    }
 -    return result;
-+    const HRESULT hr = pCreateDXGIFactory2(0, __uuidof(IDXGIFactory2), reinterpret_cast<void **>(&result));
++    const HRESULT hr = pCreateDXGIFactory1(IID_PPV_ARGS(&result));
++    if (SUCCEEDED(hr))
++        return result;
++    qWarning("CreateDXGIFactory1() failed to create DXGI factory: %s",
++        qPrintable(QSystemError::windowsComString(hr)));
++    return nullptr;
++}
++
++static IDXGIFactory2 *createDXGIFactory2()
++{
++    static const auto pCreateDXGIFactory2 =
++        reinterpret_cast<decltype(&::CreateDXGIFactory2)>(
++            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory2"));
++    if (!pCreateDXGIFactory2)
++        return nullptr;
++    IDXGIFactory2 *result = nullptr;
++    const HRESULT hr = pCreateDXGIFactory2(0, IID_PPV_ARGS(&result));
 +    if (SUCCEEDED(hr))
 +        return result;
 +    qWarning("CreateDXGIFactory2() failed to create DXGI factory: %s",
@@ -2564,19 +2700,25 @@ index 8da44eee32..6b10b923aa 100644
  }
  
  bool QRhiD3D11::create(QRhi::Flags flags)
-@@ -150,31 +169,36 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -150,91 +190,104 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          devFlags |= D3D11_CREATE_DEVICE_DEBUG;
  
      dxgiFactory = createDXGIFactory2();
+-    if (!dxgiFactory)
+-        return false;
 +    if (dxgiFactory) {
 +        supportsFlipSwapchain = QOperatingSystemVersion::isWin10OrGreater()
 +            && !qEnvironmentVariableIntValue("QT_D3D_NO_FLIP");
 +    } else {
 +        supportsFlipSwapchain = false;
 +        dxgiFactory = createDXGIFactory1();
++        if (!dxgiFactory) {
++            dxgiFactory = createDXGIFactory();
++            if (!dxgiFactory)
++                return false;
++            g_using_dxgi_1_0 = true;
++        }
 +    }
-     if (!dxgiFactory)
-         return false;
  
 -    // For a FLIP_* swapchain Present(0, 0) is not necessarily
 -    // sufficient to get non-blocking behavior, try using ALLOW_TEARING
@@ -2593,7 +2735,7 @@ index 8da44eee32..6b10b923aa 100644
 +        // sufficient to get non-blocking behavior, try using ALLOW_TEARING
 +        // when available.
 +        IDXGIFactory5 *factory5 = nullptr;
-+        if (SUCCEEDED(dxgiFactory->QueryInterface(__uuidof(IDXGIFactory5), reinterpret_cast<void **>(&factory5)))) {
++        if (SUCCEEDED(dxgiFactory->QueryInterface(IID_PPV_ARGS(&factory5)))) {
 +            BOOL allowTearing = false;
 +            if (SUCCEEDED(factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
 +                supportsAllowTearing = allowTearing;
@@ -2617,14 +2759,222 @@ index 8da44eee32..6b10b923aa 100644
 +            supportsFlipSwapchain ? "FLIP_DISCARD" : "DISCARD");
  
      if (!importedDeviceAndContext) {
-         IDXGIAdapter1 *adapter;
-@@ -4845,12 +4869,21 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+-        IDXGIAdapter1 *adapter;
+-        int requestedAdapterIndex = -1;
+-        if (qEnvironmentVariableIsSet("QT_D3D_ADAPTER_INDEX"))
+-            requestedAdapterIndex = qEnvironmentVariableIntValue("QT_D3D_ADAPTER_INDEX");
+-
+-        // The importParams may specify an adapter by the luid, take that into account.
+-        if (requestedAdapterIndex < 0 && (adapterLuid.LowPart || adapterLuid.HighPart)) {
+-            for (int adapterIndex = 0; dxgiFactory->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
+-                DXGI_ADAPTER_DESC1 desc;
+-                adapter->GetDesc1(&desc);
+-                adapter->Release();
+-                if (desc.AdapterLuid.LowPart == adapterLuid.LowPart
+-                        && desc.AdapterLuid.HighPart == adapterLuid.HighPart)
+-                {
+-                    requestedAdapterIndex = adapterIndex;
+-                    break;
++        if (!g_using_dxgi_1_0) {
++            const auto dxgiFactory1 = static_cast<IDXGIFactory1 *>(dxgiFactory);
++
++            IDXGIAdapter1 *adapter;
++            int requestedAdapterIndex = -1;
++            if (qEnvironmentVariableIsSet("QT_D3D_ADAPTER_INDEX"))
++                requestedAdapterIndex = qEnvironmentVariableIntValue("QT_D3D_ADAPTER_INDEX");
++
++            // The importParams may specify an adapter by the luid, take that into account.
++            if (requestedAdapterIndex < 0 && (adapterLuid.LowPart || adapterLuid.HighPart)) {
++                for (int adapterIndex = 0; dxgiFactory1->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
++                    DXGI_ADAPTER_DESC1 desc;
++                    adapter->GetDesc1(&desc);
++                    adapter->Release();
++                    if (desc.AdapterLuid.LowPart == adapterLuid.LowPart
++                            && desc.AdapterLuid.HighPart == adapterLuid.HighPart)
++                    {
++                        requestedAdapterIndex = adapterIndex;
++                        break;
++                    }
+                 }
+             }
+-        }
+ 
+-        if (requestedAdapterIndex < 0 && flags.testFlag(QRhi::PreferSoftwareRenderer)) {
+-            for (int adapterIndex = 0; dxgiFactory->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
++            if (requestedAdapterIndex < 0 && flags.testFlag(QRhi::PreferSoftwareRenderer)) {
++                for (int adapterIndex = 0; dxgiFactory1->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
++                    DXGI_ADAPTER_DESC1 desc;
++                    adapter->GetDesc1(&desc);
++                    adapter->Release();
++                    if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
++                        requestedAdapterIndex = adapterIndex;
++                        break;
++                    }
++                }
++            }
++
++            activeAdapter = nullptr;
++            for (int adapterIndex = 0; dxgiFactory1->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
+                 DXGI_ADAPTER_DESC1 desc;
+                 adapter->GetDesc1(&desc);
+-                adapter->Release();
+-                if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+-                    requestedAdapterIndex = adapterIndex;
+-                    break;
++                const QString name = QString::fromUtf16(reinterpret_cast<char16_t *>(desc.Description));
++                qCDebug(QRHI_LOG_INFO, "Adapter %d: '%s' (vendor 0x%X device 0x%X flags 0x%X)",
++                        adapterIndex,
++                        qPrintable(name),
++                        desc.VendorId,
++                        desc.DeviceId,
++                        desc.Flags);
++                if (!activeAdapter && (requestedAdapterIndex < 0 || requestedAdapterIndex == adapterIndex)) {
++                    activeAdapter = adapter;
++                    adapterLuid = desc.AdapterLuid;
++                    driverInfoStruct.deviceName = name.toUtf8();
++                    driverInfoStruct.deviceId = desc.DeviceId;
++                    driverInfoStruct.vendorId = desc.VendorId;
++                    qCDebug(QRHI_LOG_INFO, "  using this adapter");
++                } else {
++                    adapter->Release();
+                 }
+             }
+-        }
+-
+-        activeAdapter = nullptr;
+-        for (int adapterIndex = 0; dxgiFactory->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
+-            DXGI_ADAPTER_DESC1 desc;
+-            adapter->GetDesc1(&desc);
+-            const QString name = QString::fromUtf16(reinterpret_cast<char16_t *>(desc.Description));
+-            qCDebug(QRHI_LOG_INFO, "Adapter %d: '%s' (vendor 0x%X device 0x%X flags 0x%X)",
+-                    adapterIndex,
+-                    qPrintable(name),
+-                    desc.VendorId,
+-                    desc.DeviceId,
+-                    desc.Flags);
+-            if (!activeAdapter && (requestedAdapterIndex < 0 || requestedAdapterIndex == adapterIndex)) {
+-                activeAdapter = adapter;
+-                adapterLuid = desc.AdapterLuid;
+-                driverInfoStruct.deviceName = name.toUtf8();
+-                driverInfoStruct.deviceId = desc.DeviceId;
+-                driverInfoStruct.vendorId = desc.VendorId;
+-                qCDebug(QRHI_LOG_INFO, "  using this adapter");
+-            } else {
+-                adapter->Release();
++            if (!activeAdapter) {
++                qWarning("No adapter");
++                return false;
+             }
+         }
+-        if (!activeAdapter) {
+-            qWarning("No adapter");
+-            return false;
+-        }
+ 
+         // Normally we won't specify a requested feature level list,
+         // except when a level was specified in importParams.
+@@ -263,9 +316,31 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+                                    &dev, &featureLevel, &ctx);
+         }
+         if (FAILED(hr)) {
+-            qWarning("Failed to create D3D11 device and context: %s",
+-                qPrintable(QSystemError::windowsComString(hr)));
+-            return false;
++            qWarning().noquote() << "Failed to create D3D11 device:"
++                                 << QSystemError::windowsComString(hr)
++                                 << "\nTrying again with software device ...";
++            hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, devFlags,
++                                   requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
++                                   requestFeatureLevels ? requestedFeatureLevels.count() : 0,
++                                   D3D11_SDK_VERSION,
++                                   &dev, &featureLevel, &ctx);
++            if (FAILED(hr))
++                qWarning() << "Failed to create WARP device. Trying again with Mesa ...";
++            const HMODULE soft = QSystemLibrary::load(L"d3d10sw", false);
++            if (!soft) {
++                qWarning() << "Failed to load d3d10sw.dll. D3D11 will not be available.";
++                return false;
++            }
++            hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_SOFTWARE, soft, devFlags,
++                                   requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
++                                   requestFeatureLevels ? requestedFeatureLevels.count() : 0,
++                                   D3D11_SDK_VERSION,
++                                   &dev, &featureLevel, &ctx);
++            if (FAILED(hr)) {
++                qWarning().noquote() << "Failed to create D3D11 device:"
++                                     << QSystemError::windowsComString(hr);
++                return false;
++            }
+         }
+ 
+         // Test if creating a Shader Model 5.0 vertex shader works; we want to
+@@ -279,7 +354,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+             return false;
+         }
+ 
+-        const bool supports11_1 = SUCCEEDED(ctx->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void **>(&context)));
++        const bool supports11_1 = SUCCEEDED(ctx->QueryInterface(IID_PPV_ARGS(&context)));
+         ctx->Release();
+         if (!supports11_1) {
+             qWarning("ID3D11DeviceContext1 not supported");
+@@ -289,7 +364,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+         Q_ASSERT(dev && context);
+         featureLevel = dev->GetFeatureLevel();
+         IDXGIDevice *dxgiDev = nullptr;
+-        if (SUCCEEDED(dev->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void **>(&dxgiDev)))) {
++        if (SUCCEEDED(dev->QueryInterface(IID_PPV_ARGS(&dxgiDev)))) {
+             IDXGIAdapter *adapter = nullptr;
+             if (SUCCEEDED(dxgiDev->GetAdapter(&adapter))) {
+                 DXGI_ADAPTER_DESC desc;
+@@ -305,7 +380,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+         qCDebug(QRHI_LOG_INFO, "Using imported device %p", dev);
+     }
+ 
+-    if (FAILED(context->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), reinterpret_cast<void **>(&annotations))))
++    if (FAILED(context->QueryInterface(IID_PPV_ARGS(&annotations))))
+         annotations = nullptr;
+ 
+     deviceLost = false;
+@@ -374,7 +449,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
+ {
+     // this works only when params.enableDebugLayer was true
+     ID3D11Debug *debug;
+-    if (SUCCEEDED(device->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void **>(&debug)))) {
++    if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&debug)))) {
+         debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+         debug->Release();
+     }
+@@ -4748,7 +4823,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+         }
+     }
+     if (currentOutput) {
+-        ok = SUCCEEDED(currentOutput->QueryInterface(__uuidof(IDXGIOutput6), reinterpret_cast<void **>(result)));
++        ok = SUCCEEDED(currentOutput->QueryInterface(IID_PPV_ARGS(result)));
+         currentOutput->Release();
+     }
+     return ok;
+@@ -4776,6 +4851,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
+     }
+ 
+     QRHI_RES_RHI(QRhiD3D11);
++    if (!rhiD->activeAdapter)
++        return false;
+     DXGI_OUTPUT_DESC1 desc1;
+     if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &desc1))
+         return desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+@@ -4788,6 +4865,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
+     QRhiSwapChainHdrInfo info = QRhiSwapChain::hdrInfo();
+     if (m_format != QRhiSwapChain::SDR && m_window) {
+         QRHI_RES_RHI(QRhiD3D11);
++        if (!rhiD->activeAdapter)
++            return info;
+         DXGI_OUTPUT_DESC1 hdrOutputDesc;
+         if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &hdrOutputDesc)) {
+             info.isHardCodedDefaults = false;
+@@ -4845,12 +4924,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
  
  bool QRhiD3D11::ensureDirectCompositionDevice()
  {
-+    if (!QOperatingSystemVersion::isWin8OrGreater())
-+        return false;
-+
 +    static const auto pDCompositionCreateDevice =
 +        reinterpret_cast<decltype(&::DCompositionCreateDevice)>(
 +            QSystemLibrary::resolve(u"dcomp"_s, "DCompositionCreateDevice"));
@@ -2637,11 +2987,11 @@ index 8da44eee32..6b10b923aa 100644
      qCDebug(QRHI_LOG_INFO, "Creating Direct Composition device (needed for semi-transparent windows)");
  
 -    HRESULT hr = DCompositionCreateDevice(nullptr, __uuidof(IDCompositionDevice), reinterpret_cast<void **>(&dcompDevice));
-+    HRESULT hr = pDCompositionCreateDevice(nullptr, __uuidof(IDCompositionDevice), reinterpret_cast<void **>(&dcompDevice));
++    HRESULT hr = pDCompositionCreateDevice(nullptr, IID_PPV_ARGS(&dcompDevice));
      if (FAILED(hr)) {
          qWarning("Failed to Direct Composition device: %s",
              qPrintable(QSystemError::windowsComString(hr)));
-@@ -4883,12 +4916,18 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4883,12 +4968,18 @@ bool QD3D11SwapChain::createOrResize()
      HRESULT hr;
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -2660,7 +3010,7 @@ index 8da44eee32..6b10b923aa 100644
                      qWarning("Failed to create Direct Compsition target for the window: %s",
                               qPrintable(QSystemError::windowsComString(hr)));
                  }
-@@ -4896,10 +4935,15 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4896,10 +4987,15 @@ bool QD3D11SwapChain::createOrResize()
              if (dcompTarget && !dcompVisual) {
                  hr = rhiD->dcompDevice->CreateVisual(&dcompVisual);
                  if (FAILED(hr)) {
@@ -2676,7 +3026,7 @@ index 8da44eee32..6b10b923aa 100644
          }
          // simple consistency check
          if (window->requestedFormat().alphaBufferSize() <= 0)
-@@ -4914,7 +4958,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4914,7 +5010,7 @@ bool QD3D11SwapChain::createOrResize()
      // ALLOW_TEARING, and ALLOW_TEARING is not compatible with it at all so the
      // flag must not be set then. Whereas for flip we should use it, if
      // supported, to get better results for 'unthrottled' presentation.
@@ -2685,7 +3035,7 @@ index 8da44eee32..6b10b923aa 100644
          swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
  
      if (!swapChain) {
-@@ -4922,110 +4966,133 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4922,121 +5018,145 @@ bool QD3D11SwapChain::createOrResize()
          colorFormat = DEFAULT_FORMAT;
          srgbAdjustedColorFormat = m_flags.testFlag(sRGB) ? DEFAULT_SRGB_FORMAT : DEFAULT_FORMAT;
  
@@ -2857,7 +3207,7 @@ index 8da44eee32..6b10b923aa 100644
 +                swapChain = sc1;
 +                if (m_format != SDR) {
 +                    IDXGISwapChain3 *sc3 = nullptr;
-+                    if (SUCCEEDED(sc1->QueryInterface(__uuidof(IDXGISwapChain3), reinterpret_cast<void **>(&sc3)))) {
++                    if (SUCCEEDED(sc1->QueryInterface(IID_PPV_ARGS(&sc3)))) {
 +                        hr = sc3->SetColorSpace1(hdrColorSpace);
 +                        if (FAILED(hr)) {
 +                            qWarning("Failed to set color space on swapchain: %s",
@@ -2908,8 +3258,12 @@ index 8da44eee32..6b10b923aa 100644
          }
          if (FAILED(hr)) {
              qWarning("Failed to create D3D11 swapchain: %s",
-@@ -5035,8 +5102,8 @@ bool QD3D11SwapChain::createOrResize()
-         rhiD->dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
+                 qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+         }
+-        rhiD->dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
++        rhiD->dxgiFactory->MakeWindowAssociation(hwnd,
++            DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
      } else {
          releaseBuffers();
 -        // flip model -> buffer count is the real buffer count, not 1 like with the legacy modes
@@ -2919,18 +3273,68 @@ index 8da44eee32..6b10b923aa 100644
                                        colorFormat, swapChainFlags);
          if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
              qWarning("Device loss detected in ResizeBuffers()");
+@@ -5063,7 +5183,7 @@ bool QD3D11SwapChain::createOrResize()
+     // swapchain."
+ 
+     // So just query index 0 once (per resize) and be done with it.
+-    hr = swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&backBufferTex));
++    hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferTex));
+     if (FAILED(hr)) {
+         qWarning("Failed to query swapchain backbuffer: %s",
+             qPrintable(QSystemError::windowsComString(hr)));
 diff --git a/src/gui/rhi/qrhid3d11_p_p.h b/src/gui/rhi/qrhid3d11_p_p.h
-index 3f4d8e8e31..24d3b3324e 100644
+index 3f4d8e8e31..f88c6d047f 100644
 --- a/src/gui/rhi/qrhid3d11_p_p.h
 +++ b/src/gui/rhi/qrhid3d11_p_p.h
-@@ -739,6 +739,7 @@ public:
+@@ -737,8 +737,9 @@ public:
+     LUID adapterLuid = {};
+     ID3DUserDefinedAnnotation *annotations = nullptr;
      IDXGIAdapter1 *activeAdapter = nullptr;
-     IDXGIFactory1 *dxgiFactory = nullptr;
+-    IDXGIFactory1 *dxgiFactory = nullptr;
++    IDXGIFactory *dxgiFactory = nullptr;
      IDCompositionDevice *dcompDevice = nullptr;
 +    bool supportsFlipSwapchain = false;
      bool supportsAllowTearing = false;
      bool deviceLost = false;
      QRhiD3D11NativeHandles nativeHandlesStruct;
+diff --git a/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp b/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp
+index 6b4933cca7..eed71b6e94 100644
+--- a/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp
++++ b/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp
+@@ -107,8 +107,7 @@ void QWindowsDirectWriteFontDatabase::populateFamily(const QString &familyName)
+             IDWriteFont *font;
+             if (SUCCEEDED(matchingFonts->GetFont(j, &font))) {
+                 IDWriteFont1 *font1 = nullptr;
+-                if (!SUCCEEDED(font->QueryInterface(__uuidof(IDWriteFont1),
+-                                                   reinterpret_cast<void **>(&font1)))) {
++                if (!SUCCEEDED(font->QueryInterface(IID_PPV_ARGS(&font1)))) {
+                     qCWarning(lcQpaFonts) << "COM object does not support IDWriteFont1";
+                     continue;
+                 }
+@@ -271,8 +270,7 @@ QStringList QWindowsDirectWriteFontDatabase::addApplicationFont(const QByteArray
+ 
+     QStringList ret;
+     IDWriteFontFace3 *face3 = nullptr;
+-    if (SUCCEEDED(face->QueryInterface(__uuidof(IDWriteFontFace3),
+-                                      reinterpret_cast<void **>(&face3)))) {
++    if (SUCCEEDED(face->QueryInterface(IID_PPV_ARGS(&face3)))) {
+         QString defaultLocaleFamilyName;
+         QString englishLocaleFamilyName;
+ 
+diff --git a/src/gui/text/windows/qwindowsfontdatabase.cpp b/src/gui/text/windows/qwindowsfontdatabase.cpp
+index 2de53be6a8..4e6ffa14f7 100644
+--- a/src/gui/text/windows/qwindowsfontdatabase.cpp
++++ b/src/gui/text/windows/qwindowsfontdatabase.cpp
+@@ -1188,8 +1188,7 @@ QFontEngine *QWindowsFontDatabase::createEngine(const QFontDef &request, const Q
+                 bool isColorFont = false;
+ #if QT_CONFIG(direct2d)
+                 IDWriteFontFace2 *directWriteFontFace2 = nullptr;
+-                if (SUCCEEDED(directWriteFontFace->QueryInterface(__uuidof(IDWriteFontFace2),
+-                                                                  reinterpret_cast<void **>(&directWriteFontFace2)))) {
++                if (SUCCEEDED(directWriteFontFace->QueryInterface(IID_PPV_ARGS(&directWriteFontFace2)))) {
+                     if (directWriteFontFace2->IsColorFont())
+                         isColorFont = directWriteFontFace2->GetPaletteEntryCount() > 0;
+ 
 diff --git a/src/gui/text/windows/qwindowsfontdatabasebase.cpp b/src/gui/text/windows/qwindowsfontdatabasebase.cpp
 index f45678c65c..346952186e 100644
 --- a/src/gui/text/windows/qwindowsfontdatabasebase.cpp
@@ -2958,6 +3362,40 @@ index f45678c65c..346952186e 100644
      const QFont systemFont = QWindowsFontDatabase::LOGFONT_to_QFont(ncm.lfMessageFont);
      qCDebug(lcQpaFonts) << __FUNCTION__ << systemFont;
      return systemFont;
+diff --git a/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp b/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
+index 14dd064c33..026211c0a3 100644
+--- a/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
++++ b/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
+@@ -671,8 +671,7 @@ bool QWindowsFontEngineDirectWrite::supportsHorizontalSubPixelPositions() const
+ QFontEngine::Properties QWindowsFontEngineDirectWrite::properties() const
+ {
+     IDWriteFontFace2 *directWriteFontFace2;
+-    if (SUCCEEDED(m_directWriteFontFace->QueryInterface(__uuidof(IDWriteFontFace2),
+-                                                        reinterpret_cast<void **>(&directWriteFontFace2)))) {
++    if (SUCCEEDED(m_directWriteFontFace->QueryInterface(IID_PPV_ARGS(&directWriteFontFace2)))) {
+         DWRITE_FONT_METRICS1 metrics;
+         directWriteFontFace2->GetMetrics(&metrics);
+ 
+@@ -739,8 +738,7 @@ QImage QWindowsFontEngineDirectWrite::imageForGlyph(glyph_t t,
+             : DWRITE_GRID_FIT_MODE_DEFAULT;
+ 
+     IDWriteFactory2 *factory2 = nullptr;
+-    HRESULT hr = m_fontEngineData->directWriteFactory->QueryInterface(__uuidof(IDWriteFactory2),
+-                                                                      reinterpret_cast<void **>(&factory2));
++    HRESULT hr = m_fontEngineData->directWriteFactory->QueryInterface(IID_PPV_ARGS(&factory2));
+     IDWriteGlyphRunAnalysis *glyphAnalysis = NULL;
+     if (!SUCCEEDED(hr)) {
+         qErrnoWarning(hr, "%s: Failed to query IDWriteFactory2 interface.", __FUNCTION__);
+@@ -1063,8 +1061,7 @@ glyph_metrics_t QWindowsFontEngineDirectWrite::alphaMapBoundingBox(glyph_t glyph
+             : DWRITE_GRID_FIT_MODE_DEFAULT;
+ 
+     IDWriteFactory2 *factory2 = nullptr;
+-    HRESULT hr = m_fontEngineData->directWriteFactory->QueryInterface(__uuidof(IDWriteFactory2),
+-                                                                      reinterpret_cast<void **>(&factory2));
++    HRESULT hr = m_fontEngineData->directWriteFactory->QueryInterface(IID_PPV_ARGS(&factory2));
+ 
+     IDWriteGlyphRunAnalysis *glyphAnalysis = NULL;
+     if (SUCCEEDED(hr)) {
 diff --git a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp b/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
 index f46dfb88ee..6c1da890b9 100644
 --- a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
@@ -3099,7 +3537,7 @@ index 7884fc164e..00ec76fa8f 100644
  
  qt_internal_extend_target(QWindowsIntegrationPlugin CONDITION MINGW AND QT_FEATURE_accessibility
 diff --git a/src/plugins/platforms/windows/qwin10helpers.cpp b/src/plugins/platforms/windows/qwin10helpers.cpp
-index 026e81cb0c..6131031987 100644
+index 026e81cb0c..e17d2bc20d 100644
 --- a/src/plugins/platforms/windows/qwin10helpers.cpp
 +++ b/src/plugins/platforms/windows/qwin10helpers.cpp
 @@ -4,6 +4,8 @@
@@ -3111,7 +3549,7 @@ index 026e81cb0c..6131031987 100644
  #include <winstring.h>
  #include <roapi.h>
  
-@@ -60,23 +62,56 @@ public:
+@@ -60,29 +62,62 @@ public:
  
  QT_BEGIN_NAMESPACE
  
@@ -3133,8 +3571,6 @@ index 026e81cb0c..6131031987 100644
 +
 +    explicit QComBaseApi()
 +    {
-+        if (!QOperatingSystemVersion::isWin8OrGreater())
-+            return;
 +        QSystemLibrary comBase(u"combase"_s);
 +        pRoGetActivationFactory = reinterpret_cast<decltype(pRoGetActivationFactory)>(comBase.resolve("RoGetActivationFactory"));
 +        pWindowsCreateStringReference = reinterpret_cast<decltype(pWindowsCreateStringReference)>(comBase.resolve("WindowsCreateStringReference"));
@@ -3163,13 +3599,23 @@ index 026e81cb0c..6131031987 100644
  
      IUIViewSettingsInterop *uiViewSettingsInterop = nullptr;
      // __uuidof(IUIViewSettingsInterop);
-     const GUID uiViewSettingsInteropRefId = {0x3694dbf9, 0x8f68, 0x44be,{0x8f, 0xf5, 0x19, 0x5c, 0x98, 0xed, 0xe8, 0xa6}};
+-    const GUID uiViewSettingsInteropRefId = {0x3694dbf9, 0x8f68, 0x44be,{0x8f, 0xf5, 0x19, 0x5c, 0x98, 0xed, 0xe8, 0xa6}};
++    static constexpr const GUID uiViewSettingsInteropRefId =
++        {0x3694dbf9, 0x8f68, 0x44be,{0x8f, 0xf5, 0x19, 0x5c, 0x98, 0xed, 0xe8, 0xa6}};
  
 -    HRESULT hr = RoGetActivationFactory(uiViewSettingsIdHs, uiViewSettingsInteropRefId,
 +    HRESULT hr = QComBaseApi::instance()->pRoGetActivationFactory(uiViewSettingsIdHs, uiViewSettingsInteropRefId,
                                                     reinterpret_cast<void **>(&uiViewSettingsInterop));
      if (FAILED(hr))
          return false;
+ 
+     //  __uuidof(ABI::Windows::UI::ViewManagement::IUIViewSettings);
+-    const GUID uiViewSettingsRefId = {0xc63657f6, 0x8850, 0x470d,{0x88, 0xf8, 0x45, 0x5e, 0x16, 0xea, 0x2c, 0x26}};
++    static constexpr const GUID uiViewSettingsRefId =
++        {0xc63657f6, 0x8850, 0x470d,{0x88, 0xf8, 0x45, 0x5e, 0x16, 0xea, 0x2c, 0x26}};
+     ABI::Windows::UI::ViewManagement::IUIViewSettings *viewSettings = nullptr;
+     hr = uiViewSettingsInterop->GetForWindow(hwnd, uiViewSettingsRefId,
+                                              reinterpret_cast<void **>(&viewSettings));
 diff --git a/src/plugins/platforms/windows/qwindowsapplication.cpp b/src/plugins/platforms/windows/qwindowsapplication.cpp
 index 5d1b6d348b..bfef10e673 100644
 --- a/src/plugins/platforms/windows/qwindowsapplication.cpp
@@ -4130,7 +4576,7 @@ index b9d02a4374..3398668b98 100644
      }
      const auto setting = QWinRegistryKey(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Themes\Personalize)")
 diff --git a/src/plugins/platforms/windows/qwindowswindow.cpp b/src/plugins/platforms/windows/qwindowswindow.cpp
-index eacb6aa474..714de31440 100644
+index eacb6aa474..08b658ce53 100644
 --- a/src/plugins/platforms/windows/qwindowswindow.cpp
 +++ b/src/plugins/platforms/windows/qwindowswindow.cpp
 @@ -22,6 +22,7 @@
@@ -4237,12 +4683,14 @@ index eacb6aa474..714de31440 100644
                  if (flags & Qt::MSWindowsFixedSizeDialogHint) {
                      style |= WS_DLGFRAME;
                  } else {
-@@ -827,13 +828,15 @@ void WindowCreationData::fromWindow(const QWindow *w, const Qt::WindowFlags flag
+@@ -827,13 +828,17 @@ void WindowCreationData::fromWindow(const QWindow *w, const Qt::WindowFlags flag
              if ((flags & Qt::WindowContextHelpButtonHint) && !showMinimizeButton
                  && !showMaximizeButton)
                  exStyle |= WS_EX_CONTEXTHELP;
-+            if (qEnvironmentVariableIntValue("QT_WINDOWS_DISABLE_BITMAP_REDIRECTION"))
++            if (qEnvironmentVariableIntValue("QT_WINDOWS_DISABLE_BITMAP_REDIRECTION")
++                    && QOperatingSystemVersion::isWin8OrGreater()) {
 +                exStyle |= WS_EX_NOREDIRECTIONBITMAP;
++            }
          } else {
               exStyle |= WS_EX_TOOLWINDOW;
          }
@@ -4254,7 +4702,7 @@ index eacb6aa474..714de31440 100644
              exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
      }
  }
-@@ -1042,9 +1045,12 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, DWORD style, DWORD exStyl
+@@ -1042,9 +1047,12 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, DWORD style, DWORD exStyl
  {
      if (!w->isTopLevel() || w->flags().testFlag(Qt::FramelessWindowHint))
          return {};
@@ -4268,7 +4716,7 @@ index eacb6aa474..714de31440 100644
          qErrnoWarning("%s: AdjustWindowRectExForDpi failed", __FUNCTION__);
      }
      const QMargins result(qAbs(rect.left), qAbs(rect.top),
-@@ -1084,7 +1090,8 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, const QRect &geometry,
+@@ -1084,7 +1092,8 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, const QRect &geometry,
  {
      if (!w->isTopLevel() || w->flags().testFlag(Qt::FramelessWindowHint))
          return {};
@@ -4278,7 +4726,7 @@ index eacb6aa474..714de31440 100644
          || !QWindowsContext::shouldHaveNonClientDpiScaling(w)) {
          return frameOnPrimaryScreen(w, style, exStyle);
      }
-@@ -1535,7 +1542,7 @@ void QWindowsWindow::initialize()
+@@ -1535,7 +1544,7 @@ void QWindowsWindow::initialize()
              QWindowSystemInterface::handleGeometryChange<QWindowSystemInterface::SynchronousDelivery>(w, obtainedGeometry);
          }
      }
@@ -4287,7 +4735,7 @@ index eacb6aa474..714de31440 100644
  }
  
  QSurfaceFormat QWindowsWindow::format() const
-@@ -2007,7 +2014,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
+@@ -2007,7 +2016,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
  
  void QWindowsWindow::handleDpiChangedAfterParent(HWND hwnd)
  {
@@ -4296,7 +4744,7 @@ index eacb6aa474..714de31440 100644
      const qreal scale = qreal(dpi) / qreal(savedDpi());
      setSavedDpi(dpi);
  
-@@ -2327,13 +2334,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
+@@ -2327,13 +2336,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
          return false;
      PAINTSTRUCT ps;
  
@@ -4321,7 +4769,7 @@ index eacb6aa474..714de31440 100644
      // If the a window is obscured by another window (such as a child window)
      // we still need to send isExposed=true, for compatibility.
      // Our tests depend on it.
-@@ -2921,7 +2937,7 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
+@@ -2921,7 +2939,7 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
              mmi->ptMaxPosition.x = availablePositionDiff.x();
              mmi->ptMaxPosition.y = availablePositionDiff.y();
              if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
@@ -4330,7 +4778,7 @@ index eacb6aa474..714de31440 100644
                  mmi->ptMaxSize.x += borderWidth * 2;
                  mmi->ptMaxSize.y += borderWidth * 2;
                  mmi->ptMaxTrackSize = mmi->ptMaxSize;
-@@ -2962,7 +2978,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
+@@ -2962,7 +2980,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
              return true;
          }
          if (localPos.y() < 0) {

@@ -1,4 +1,4 @@
-From 224ee952b72de0c6136dd99e160b20877df7baff Mon Sep 17 00:00:00 2001
+From 706d227649be96a72e6e6550578cc776e43f98c4 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -78,7 +78,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../windows/qwindowsmousehandler.cpp          |  11 +-
  .../windows/qwindowsopengltester.cpp          |   6 +-
  .../windows/qwindowspointerhandler.cpp        |  25 +-
- .../platforms/windows/qwindowsscreen.cpp      |  62 +--
+ .../platforms/windows/qwindowsscreen.cpp      |  71 ++-
  .../windows/qwindowssystemtrayicon.cpp        |   8 +-
  .../platforms/windows/qwindowstheme.cpp       | 135 +++--
  .../platforms/windows/qwindowswindow.cpp      | 101 ++--
@@ -93,7 +93,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 243 +++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 74 files changed, 1737 insertions(+), 2048 deletions(-)
+ 74 files changed, 1742 insertions(+), 2052 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -1084,7 +1084,7 @@ index 0000000000..8c7741c113
 +
 +QT_END_NAMESPACE
 diff --git a/src/corelib/thread/qwaitcondition_p.h b/src/corelib/thread/qwaitcondition_p.h
-index 0893e9dd35..e82f832817 100644
+index cfb36ca30b..01bb000366 100644
 --- a/src/corelib/thread/qwaitcondition_p.h
 +++ b/src/corelib/thread/qwaitcondition_p.h
 @@ -7,9 +7,10 @@
@@ -4462,7 +4462,7 @@ index 88f02347b3..75226c3810 100644
  
      const auto systemId = (qint64)penInfo->pointerInfo.sourceDevice;
 diff --git a/src/plugins/platforms/windows/qwindowsscreen.cpp b/src/plugins/platforms/windows/qwindowsscreen.cpp
-index f15a7a870d..89ac12e8f4 100644
+index f15a7a870d..a513ec937d 100644
 --- a/src/plugins/platforms/windows/qwindowsscreen.cpp
 +++ b/src/plugins/platforms/windows/qwindowsscreen.cpp
 @@ -26,22 +26,14 @@ QT_BEGIN_NAMESPACE
@@ -4523,7 +4523,37 @@ index f15a7a870d..89ac12e8f4 100644
              if (wcscmp(viewInfo.szDevice, deviceName.viewGdiDeviceName) == 0) {
                  *pathInfo = pathInfos[p];
                  return true;
-@@ -135,8 +128,8 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
+@@ -89,8 +82,9 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
+ // Needed later for HDR support
+ static float getMonitorSDRWhiteLevel(DISPLAYCONFIG_PATH_TARGET_INFO *targetInfo)
+ {
+-    const float defaultSdrWhiteLevel = 200.0;
+-    if (!targetInfo)
++    static constexpr const float defaultSdrWhiteLevel = 200.0;
++
++    if (!QWindowsApi::instance()->pDisplayConfigGetDeviceInfo || !targetInfo)
+         return defaultSdrWhiteLevel;
+ 
+     DISPLAYCONFIG_SDR_WHITE_LEVEL whiteLevel = {};
+@@ -98,7 +92,7 @@ static float getMonitorSDRWhiteLevel(DISPLAYCONFIG_PATH_TARGET_INFO *targetInfo)
+     whiteLevel.header.size = sizeof(DISPLAYCONFIG_SDR_WHITE_LEVEL);
+     whiteLevel.header.adapterId = targetInfo->adapterId;
+     whiteLevel.header.id = targetInfo->id;
+-    if (DisplayConfigGetDeviceInfo(&whiteLevel.header) != ERROR_SUCCESS)
++    if (QWindowsApi::instance()->pDisplayConfigGetDeviceInfo(&whiteLevel.header) != ERROR_SUCCESS)
+         return defaultSdrWhiteLevel;
+     return whiteLevel.SDRWhiteLevel * 80.0 / 1000.0;
+ }
+@@ -126,7 +120,7 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
+         deviceName.header.size = sizeof(DISPLAYCONFIG_TARGET_DEVICE_NAME);
+         deviceName.header.adapterId = pathInfo.targetInfo.adapterId;
+         deviceName.header.id = pathInfo.targetInfo.id;
+-        if (DisplayConfigGetDeviceInfo(&deviceName.header) == ERROR_SUCCESS)
++        if (QWindowsApi::instance()->pDisplayConfigGetDeviceInfo(&deviceName.header) == ERROR_SUCCESS)
+             data->name = QString::fromWCharArray(deviceName.monitorFriendlyDeviceName);
+     }
+     if (data->name.isEmpty())
+@@ -135,8 +129,8 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
          data->flags |= QWindowsScreenData::LockScreen;
      } else {
          if (const HDC hdc = CreateDC(info.szDevice, nullptr, nullptr, nullptr)) {
@@ -4534,7 +4564,7 @@ index f15a7a870d..89ac12e8f4 100644
              data->depth = GetDeviceCaps(hdc, BITSPIXEL);
              data->format = data->depth == 16 ? QImage::Format_RGB16 : QImage::Format_RGB32;
              data->physicalSizeMM = QSizeF(GetDeviceCaps(hdc, HORZSIZE), GetDeviceCaps(hdc, VERTSIZE));
-@@ -424,7 +417,8 @@ QRect QWindowsScreen::virtualGeometry(const QPlatformScreen *screen) // cf QScre
+@@ -424,7 +418,8 @@ QRect QWindowsScreen::virtualGeometry(const QPlatformScreen *screen) // cf QScre
  
  bool QWindowsScreen::setOrientationPreference(Qt::ScreenOrientation o)
  {
@@ -4544,7 +4574,7 @@ index f15a7a870d..89ac12e8f4 100644
      ORIENTATION_PREFERENCE orientationPreference = ORIENTATION_PREFERENCE_NONE;
      switch (o) {
      case Qt::PrimaryOrientation:
-@@ -442,33 +436,29 @@ bool QWindowsScreen::setOrientationPreference(Qt::ScreenOrientation o)
+@@ -442,33 +437,29 @@ bool QWindowsScreen::setOrientationPreference(Qt::ScreenOrientation o)
          orientationPreference = ORIENTATION_PREFERENCE_LANDSCAPE_FLIPPED;
          break;
      }

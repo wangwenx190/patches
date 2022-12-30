@@ -1,4 +1,4 @@
-From bc2930324f5784870f1f337bc732e52b51af96fd Mon Sep 17 00:00:00 2001
+From de236fb175dbdbfb8677592eaa9550fa4ef6ccc9 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -379,7 +379,7 @@ index 5450b2562c..2da78922c8 100644
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
 diff --git a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
-index b8f9ab52aa..65f690c6dc 100644
+index b8f9ab52aa..9e08c3257b 100644
 --- a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
 +++ b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
 @@ -2883,10 +2883,36 @@ static void vma_aligned_free(void* VMA_NULLABLE ptr)
@@ -416,7 +416,7 @@ index b8f9ab52aa..65f690c6dc 100644
 +                        return nullptr;
 +                    return reinterpret_cast<PFN_TryAcquireSRWLockExclusive>(func);
 +                }();
-+                return pTryAcquireSRWLockExclusive && TryAcquireSRWLockExclusive(&m_Lock) != FALSE;
++                return pTryAcquireSRWLockExclusive && pTryAcquireSRWLockExclusive(&m_Lock) != FALSE;
 +            }
          private:
              SRWLOCK m_Lock;

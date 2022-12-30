@@ -1,4 +1,4 @@
-From de236fb175dbdbfb8677592eaa9550fa4ef6ccc9 Mon Sep 17 00:00:00 2001
+From 1d1309718d35dddc0fa05d7360e73e26119966d5 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -44,24 +44,24 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/thread/qlocking_p.h               |   7 +-
  src/corelib/thread/qmutex.cpp                 |   2 +
  src/corelib/thread/qmutex_p.h                 |   9 +-
- src/corelib/thread/qmutex_win.cpp             |  30 ++
+ src/corelib/thread/qmutex_win.cpp             |  30 +
  src/corelib/thread/qwaitcondition_p.h         |   7 +-
  src/gui/CMakeLists.txt                        |  16 -
  .../windows/apisupport/qwindowsuiawrapper.cpp |  89 ---
  .../windows/apisupport/qwindowsuiawrapper_p.h |  67 ---
  .../windows/apisupport/uiaattributeids_p.h    |  63 ---
  .../apisupport/uiaclientinterfaces_p.h        | 230 --------
- .../windows/apisupport/uiacontroltypeids_p.h  |  60 ---
+ .../windows/apisupport/uiacontroltypeids_p.h  |  60 --
  .../windows/apisupport/uiaerrorids_p.h        |  26 -
  .../windows/apisupport/uiaeventids_p.h        |  54 --
  .../windows/apisupport/uiageneralids_p.h      |  21 -
  .../windows/apisupport/uiapatternids_p.h      |  53 --
  .../windows/apisupport/uiapropertyids_p.h     | 188 -------
- .../apisupport/uiaserverinterfaces_p.h        | 367 -------------
+ .../apisupport/uiaserverinterfaces_p.h        | 367 ------------
  .../windows/apisupport/uiatypes_p.h           | 157 ------
  src/gui/configure.cmake                       |  10 +-
  src/gui/opengl/qopengl.cpp                    |  32 +-
- src/gui/rhi/qrhid3d11.cpp                     | 510 +++++++++++-------
+ src/gui/rhi/qrhid3d11.cpp                     | 525 +++++++++++-------
  src/gui/rhi/qrhid3d11_p_p.h                   |   3 +-
  .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
  src/gui/text/windows/qwindowsfontdatabase.cpp |   3 +-
@@ -93,9 +93,9 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/tools/rcc/main.cpp                        |   7 +-
  src/tools/rcc/rcc.cpp                         |   8 +-
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
- src/widgets/dialogs/qwizard_win.cpp           | 243 +++++----
+ src/widgets/dialogs/qwizard_win.cpp           | 243 ++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 76 files changed, 1781 insertions(+), 2057 deletions(-)
+ 76 files changed, 1792 insertions(+), 2061 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -2738,7 +2738,7 @@ index 7c997103d5..2821915c92 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index 8da44eee32..466ae2bc83 100644
+index 8da44eee32..1c9afd4f11 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -9,6 +9,8 @@
@@ -2759,7 +2759,7 @@ index 8da44eee32..466ae2bc83 100644
                  // get rid of the ref added by QueryInterface
                  ctx->Release();
                  importedDeviceAndContext = true;
-@@ -129,20 +131,66 @@ inline Int aligned(Int v, Int byteAlign)
+@@ -129,112 +131,174 @@ inline Int aligned(Int v, Int byteAlign)
      return (v + byteAlign - 1) & ~(byteAlign - 1);
  }
  
@@ -2767,7 +2767,7 @@ index 8da44eee32..466ae2bc83 100644
 +static bool g_using_dxgi_1_0 = false;
 +
 +static IDXGIFactory *createDXGIFactory()
- {
++{
 +    static const auto pCreateDXGIFactory =
 +        reinterpret_cast<decltype(&::CreateDXGIFactory)>(
 +            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory"));
@@ -2783,7 +2783,7 @@ index 8da44eee32..466ae2bc83 100644
 +}
 +
 +static IDXGIFactory1 *createDXGIFactory1()
-+{
+ {
 +    static const auto pCreateDXGIFactory1 =
 +        reinterpret_cast<decltype(&::CreateDXGIFactory1)>(
 +            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory1"));
@@ -2803,10 +2803,12 @@ index 8da44eee32..466ae2bc83 100644
 +    qWarning("CreateDXGIFactory1() failed to create DXGI factory: %s",
 +        qPrintable(QSystemError::windowsComString(hr)));
 +    return nullptr;
-+}
-+
+ }
+ 
+-bool QRhiD3D11::create(QRhi::Flags flags)
 +static IDXGIFactory2 *createDXGIFactory2()
-+{
+ {
+-    rhiFlags = flags;
 +    static const auto pCreateDXGIFactory2 =
 +        reinterpret_cast<decltype(&::CreateDXGIFactory2)>(
 +            QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory2"));
@@ -2819,10 +2821,13 @@ index 8da44eee32..466ae2bc83 100644
 +    qWarning("CreateDXGIFactory2() failed to create DXGI factory: %s",
 +        qPrintable(QSystemError::windowsComString(hr)));
 +    return nullptr;
- }
++}
  
- bool QRhiD3D11::create(QRhi::Flags flags)
- {
+-    uint devFlags = 0;
+-    if (debugLayer)
+-        devFlags |= D3D11_CREATE_DEVICE_DEBUG;
++bool QRhiD3D11::create(QRhi::Flags flags)
++{
 +    static const auto pD3D11CreateDevice =
 +        reinterpret_cast<decltype(&::D3D11CreateDevice)>(
 +            QSystemLibrary::resolve(u"d3d11"_s, "D3D11CreateDevice"));
@@ -2830,12 +2835,6 @@ index 8da44eee32..466ae2bc83 100644
 +        qWarning() << "D3D11 is not available on this platform.";
 +        return false;
 +    }
-+
-     rhiFlags = flags;
- 
-     uint devFlags = 0;
-@@ -150,91 +198,106 @@ bool QRhiD3D11::create(QRhi::Flags flags)
-         devFlags |= D3D11_CREATE_DEVICE_DEBUG;
  
      dxgiFactory = createDXGIFactory2();
 -    if (!dxgiFactory)
@@ -2881,18 +2880,23 @@ index 8da44eee32..466ae2bc83 100644
  
 -    if (qEnvironmentVariableIntValue("QT_D3D_FLIP_DISCARD"))
 -        qWarning("The default swap effect is FLIP_DISCARD, QT_D3D_FLIP_DISCARD is now ignored");
--
--    if (qEnvironmentVariableIntValue("QT_D3D_NO_FLIP"))
--        qWarning("Non-FLIP swapchains are no longer supported, QT_D3D_NO_FLIP is now ignored");
--
--    qCDebug(QRHI_LOG_INFO, "FLIP_* swapchain supported = true, ALLOW_TEARING supported = %s",
 +    qCDebug(QRHI_LOG_INFO, "FLIP_* swapchain supported = %s, ALLOW_TEARING supported = %s",
 +            supportsFlipSwapchain ? "true" : "false",
-             supportsAllowTearing ? "true" : "false");
++            supportsAllowTearing ? "true" : "false");
  
--    qCDebug(QRHI_LOG_INFO, "Default swap effect: FLIP_DISCARD");
+-    if (qEnvironmentVariableIntValue("QT_D3D_NO_FLIP"))
+-        qWarning("Non-FLIP swapchains are no longer supported, QT_D3D_NO_FLIP is now ignored");
 +    qCDebug(QRHI_LOG_INFO, "Default swap effect: %s",
 +            supportsFlipSwapchain ? "FLIP_DISCARD" : "DISCARD");
+ 
+-    qCDebug(QRHI_LOG_INFO, "FLIP_* swapchain supported = true, ALLOW_TEARING supported = %s",
+-            supportsAllowTearing ? "true" : "false");
++    rhiFlags = flags;
+ 
+-    qCDebug(QRHI_LOG_INFO, "Default swap effect: FLIP_DISCARD");
++    uint devFlags = 0;
++    if (debugLayer)
++        devFlags |= D3D11_CREATE_DEVICE_DEBUG;
  
      if (!importedDeviceAndContext) {
 -        IDXGIAdapter1 *adapter;
@@ -2911,6 +2915,8 @@ index 8da44eee32..466ae2bc83 100644
 -                {
 -                    requestedAdapterIndex = adapterIndex;
 -                    break;
++        activeAdapter = nullptr;
++
 +        if (!g_using_dxgi_1_0) {
 +            IDXGIAdapter1 *adapter;
 +            int requestedAdapterIndex = -1;
@@ -2934,7 +2940,7 @@ index 8da44eee32..466ae2bc83 100644
 +                }
 +            }
 +
-+            if (requestedAdapterIndex < 0 && flags.testFlag(QRhi::PreferSoftwareRenderer)) {
++            if (requestedAdapterIndex < 0 && rhiFlags.testFlag(QRhi::PreferSoftwareRenderer)) {
 +                for (int adapterIndex = 0; dxgiFactory1->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
 +                    DXGI_ADAPTER_DESC1 desc;
 +                    adapter->GetDesc1(&desc);
@@ -2949,7 +2955,6 @@ index 8da44eee32..466ae2bc83 100644
  
 -        if (requestedAdapterIndex < 0 && flags.testFlag(QRhi::PreferSoftwareRenderer)) {
 -            for (int adapterIndex = 0; dxgiFactory->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
-+            activeAdapter = nullptr;
 +            for (int adapterIndex = 0; dxgiFactory1->EnumAdapters1(UINT(adapterIndex), &adapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
                  DXGI_ADAPTER_DESC1 desc;
                  adapter->GetDesc1(&desc);
@@ -3009,16 +3014,19 @@ index 8da44eee32..466ae2bc83 100644
  
          // Normally we won't specify a requested feature level list,
          // except when a level was specified in importParams.
-@@ -246,26 +309,48 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -245,27 +309,55 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+             requestedFeatureLevels.append(featureLevel);
          }
  
++        const D3D_DRIVER_TYPE driverType =
++                activeAdapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
          ID3D11DeviceContext *ctx = nullptr;
 -        HRESULT hr = D3D11CreateDevice(activeAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, devFlags,
 -                                       requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
 -                                       requestFeatureLevels ? requestedFeatureLevels.count() : 0,
 -                                       D3D11_SDK_VERSION,
 -                                       &dev, &featureLevel, &ctx);
-+        HRESULT hr = pD3D11CreateDevice(activeAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, devFlags,
++        HRESULT hr = pD3D11CreateDevice(activeAdapter, driverType, nullptr, devFlags,
 +                                        requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
 +                                        requestFeatureLevels ? requestedFeatureLevels.count() : 0,
 +                                        D3D11_SDK_VERSION,
@@ -3033,7 +3041,7 @@ index 8da44eee32..466ae2bc83 100644
 -                                   requestFeatureLevels ? requestedFeatureLevels.count() : 0,
 -                                   D3D11_SDK_VERSION,
 -                                   &dev, &featureLevel, &ctx);
-+            hr = pD3D11CreateDevice(activeAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, devFlags,
++            hr = pD3D11CreateDevice(activeAdapter, driverType, nullptr, devFlags,
 +                                    requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
 +                                    requestFeatureLevels ? requestedFeatureLevels.count() : 0,
 +                                    D3D11_SDK_VERSION,
@@ -3045,17 +3053,20 @@ index 8da44eee32..466ae2bc83 100644
 -            return false;
 +            qWarning().noquote() << "Failed to create D3D11 device:"
 +                                 << QSystemError::windowsComString(hr)
-+                                 << "\nTrying again with WARP device ...";
++                                 << "\nTry again using WARP instead ...";
 +            hr = pD3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, devFlags,
 +                                    requestFeatureLevels ? requestedFeatureLevels.constData() : nullptr,
 +                                    requestFeatureLevels ? requestedFeatureLevels.count() : 0,
 +                                    D3D11_SDK_VERSION,
 +                                    &dev, &featureLevel, &ctx);
-+            if (FAILED(hr))
-+                qWarning() << "Failed to create WARP device. Trying again with Mesa ...";
++            if (FAILED(hr)) {
++                qWarning() << "Failed to create D3D11 device with WARP:"
++                           << QSystemError::windowsComString(hr)
++                           << "\nTry again using Mesa instead ...";
++            }
 +            const HMODULE soft = QSystemLibrary::load(L"d3d10sw", false);
 +            if (!soft) {
-+                qWarning() << "Failed to load d3d10sw.dll. D3D11 will not be available.";
++                qWarning() << "Failed to load d3d10sw.dll. D3D11 is not available.";
 +                return false;
 +            }
 +            hr = pD3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_SOFTWARE, soft, devFlags,
@@ -3064,14 +3075,15 @@ index 8da44eee32..466ae2bc83 100644
 +                                    D3D11_SDK_VERSION,
 +                                    &dev, &featureLevel, &ctx);
 +            if (FAILED(hr)) {
-+                qWarning().noquote() << "Failed to create D3D11 device:"
-+                                     << QSystemError::windowsComString(hr);
++                qWarning().noquote() << "Failed to create D3D11 device with Mesa:"
++                                     << QSystemError::windowsComString(hr)
++                                     << "\nD3D11 is not available.";
 +                return false;
 +            }
          }
  
          // Test if creating a Shader Model 5.0 vertex shader works; we want to
-@@ -279,7 +364,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -279,7 +371,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
              return false;
          }
  
@@ -3080,7 +3092,7 @@ index 8da44eee32..466ae2bc83 100644
          ctx->Release();
          if (!supports11_1) {
              qWarning("ID3D11DeviceContext1 not supported");
-@@ -289,7 +374,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -289,7 +381,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          Q_ASSERT(dev && context);
          featureLevel = dev->GetFeatureLevel();
          IDXGIDevice *dxgiDev = nullptr;
@@ -3089,7 +3101,7 @@ index 8da44eee32..466ae2bc83 100644
              IDXGIAdapter *adapter = nullptr;
              if (SUCCEEDED(dxgiDev->GetAdapter(&adapter))) {
                  DXGI_ADAPTER_DESC desc;
-@@ -305,7 +390,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -305,7 +397,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          qCDebug(QRHI_LOG_INFO, "Using imported device %p", dev);
      }
  
@@ -3098,7 +3110,7 @@ index 8da44eee32..466ae2bc83 100644
          annotations = nullptr;
  
      deviceLost = false;
-@@ -374,7 +459,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
+@@ -374,7 +466,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
  {
      // this works only when params.enableDebugLayer was true
      ID3D11Debug *debug;
@@ -3107,7 +3119,7 @@ index 8da44eee32..466ae2bc83 100644
          debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
          debug->Release();
      }
-@@ -4748,7 +4833,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+@@ -4748,7 +4840,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
          }
      }
      if (currentOutput) {
@@ -3116,7 +3128,7 @@ index 8da44eee32..466ae2bc83 100644
          currentOutput->Release();
      }
      return ok;
-@@ -4776,6 +4861,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
+@@ -4776,6 +4868,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
      }
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -3125,7 +3137,7 @@ index 8da44eee32..466ae2bc83 100644
      DXGI_OUTPUT_DESC1 desc1;
      if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &desc1))
          return desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-@@ -4788,6 +4875,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
+@@ -4788,6 +4882,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
      QRhiSwapChainHdrInfo info = QRhiSwapChain::hdrInfo();
      if (m_format != QRhiSwapChain::SDR && m_window) {
          QRHI_RES_RHI(QRhiD3D11);
@@ -3134,7 +3146,7 @@ index 8da44eee32..466ae2bc83 100644
          DXGI_OUTPUT_DESC1 hdrOutputDesc;
          if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &hdrOutputDesc)) {
              info.isHardCodedDefaults = false;
-@@ -4845,12 +4934,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+@@ -4845,12 +4941,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
  
  bool QRhiD3D11::ensureDirectCompositionDevice()
  {
@@ -3154,7 +3166,7 @@ index 8da44eee32..466ae2bc83 100644
      if (FAILED(hr)) {
          qWarning("Failed to Direct Composition device: %s",
              qPrintable(QSystemError::windowsComString(hr)));
-@@ -4883,12 +4978,18 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4883,12 +4985,18 @@ bool QD3D11SwapChain::createOrResize()
      HRESULT hr;
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -3173,7 +3185,7 @@ index 8da44eee32..466ae2bc83 100644
                      qWarning("Failed to create Direct Compsition target for the window: %s",
                               qPrintable(QSystemError::windowsComString(hr)));
                  }
-@@ -4896,10 +4997,15 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4896,10 +5004,15 @@ bool QD3D11SwapChain::createOrResize()
              if (dcompTarget && !dcompVisual) {
                  hr = rhiD->dcompDevice->CreateVisual(&dcompVisual);
                  if (FAILED(hr)) {
@@ -3189,7 +3201,7 @@ index 8da44eee32..466ae2bc83 100644
          }
          // simple consistency check
          if (window->requestedFormat().alphaBufferSize() <= 0)
-@@ -4914,7 +5020,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4914,7 +5027,7 @@ bool QD3D11SwapChain::createOrResize()
      // ALLOW_TEARING, and ALLOW_TEARING is not compatible with it at all so the
      // flag must not be set then. Whereas for flip we should use it, if
      // supported, to get better results for 'unthrottled' presentation.
@@ -3198,7 +3210,7 @@ index 8da44eee32..466ae2bc83 100644
          swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
  
      if (!swapChain) {
-@@ -4922,121 +5028,145 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4922,121 +5035,145 @@ bool QD3D11SwapChain::createOrResize()
          colorFormat = DEFAULT_FORMAT;
          srgbAdjustedColorFormat = m_flags.testFlag(sRGB) ? DEFAULT_SRGB_FORMAT : DEFAULT_FORMAT;
  
@@ -3289,9 +3301,7 @@ index 8da44eee32..466ae2bc83 100644
 +            // This makes no difference for the rest of the stuff except that
 +            // automatic MSAA is unsupported and needs to be implemented via a
 +            // custom multisample render target and an explicit resolve.
- 
--        IDXGIFactory2 *fac = static_cast<IDXGIFactory2 *>(rhiD->dxgiFactory);
--        IDXGISwapChain1 *sc1;
++
 +            DXGI_SWAP_CHAIN_DESC1 desc = {};
 +            desc.Width = UINT(pixelSize.width());
 +            desc.Height = UINT(pixelSize.height());
@@ -3302,7 +3312,9 @@ index 8da44eee32..466ae2bc83 100644
 +            desc.Flags = swapChainFlags;
 +            desc.Scaling = DXGI_SCALING_NONE;
 +            desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-+
+ 
+-        IDXGIFactory2 *fac = static_cast<IDXGIFactory2 *>(rhiD->dxgiFactory);
+-        IDXGISwapChain1 *sc1;
 +            if (dcompVisual) {
 +                // With DirectComposition setting AlphaMode to STRAIGHT fails the
 +                // swapchain creation, whereas the result seems to be identical
@@ -3436,7 +3448,7 @@ index 8da44eee32..466ae2bc83 100644
                                        colorFormat, swapChainFlags);
          if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
              qWarning("Device loss detected in ResizeBuffers()");
-@@ -5063,7 +5193,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -5063,7 +5200,7 @@ bool QD3D11SwapChain::createOrResize()
      // swapchain."
  
      // So just query index 0 once (per resize) and be done with it.

@@ -1,4 +1,4 @@
-From 706d227649be96a72e6e6550578cc776e43f98c4 Mon Sep 17 00:00:00 2001
+From bc2930324f5784870f1f337bc732e52b51af96fd Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,6 +26,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/VC-LTL.cmake                            |  94 ++++
  configure.cmake                               |   5 +
  qt_cmdline.cmake                              |   1 +
+ .../VulkanMemoryAllocator/vk_mem_alloc.h      |  30 +-
  src/corelib/CMakeLists.txt                    |   2 +
  src/corelib/global/qlibraryinfo.cpp           |  20 +-
  src/corelib/global/qlibraryinfo.h             |   5 +
@@ -33,6 +34,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/global/qoperatingsystemversion.h  |  40 ++
  .../global/qoperatingsystemversion_win.cpp    |  20 +-
  src/corelib/global/qsysinfo.cpp               |  34 +-
+ src/corelib/io/qlockfile_win.cpp              |  14 +-
  src/corelib/kernel/qcoreapplication.cpp       |  11 +
  src/corelib/kernel/qeventdispatcher_win.cpp   |  12 +-
  src/corelib/kernel/qfunctions_win.cpp         |  10 +-
@@ -93,7 +95,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 243 +++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 74 files changed, 1742 insertions(+), 2052 deletions(-)
+ 76 files changed, 1781 insertions(+), 2057 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -376,6 +378,49 @@ index 5450b2562c..2da78922c8 100644
  # special case begin
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
+diff --git a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
+index b8f9ab52aa..65f690c6dc 100644
+--- a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
++++ b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
+@@ -2883,10 +2883,36 @@ static void vma_aligned_free(void* VMA_NULLABLE ptr)
+             VmaRWMutex() { InitializeSRWLock(&m_Lock); }
+             void LockRead() { AcquireSRWLockShared(&m_Lock); }
+             void UnlockRead() { ReleaseSRWLockShared(&m_Lock); }
+-            bool TryLockRead() { return TryAcquireSRWLockShared(&m_Lock) != FALSE; }
++            bool TryLockRead() {
++                // TryAcquireSRWLockShared: available on Win7+
++                using PFN_TryAcquireSRWLockShared = decltype(&::TryAcquireSRWLockShared);
++                static const auto pTryAcquireSRWLockShared = []() -> PFN_TryAcquireSRWLockShared {
++                    const HMODULE library = LoadLibraryW(L"kernel32");
++                    if (!library)
++                        return nullptr;
++                    const FARPROC func = GetProcAddress(library, "TryAcquireSRWLockShared");
++                    if (!func)
++                        return nullptr;
++                    return reinterpret_cast<PFN_TryAcquireSRWLockShared>(func);
++                }();
++                return pTryAcquireSRWLockShared && pTryAcquireSRWLockShared(&m_Lock) != FALSE;
++            }
+             void LockWrite() { AcquireSRWLockExclusive(&m_Lock); }
+             void UnlockWrite() { ReleaseSRWLockExclusive(&m_Lock); }
+-            bool TryLockWrite() { return TryAcquireSRWLockExclusive(&m_Lock) != FALSE; }
++            bool TryLockWrite() {
++                // TryAcquireSRWLockExclusive: available on Win7+
++                using PFN_TryAcquireSRWLockExclusive = decltype(&::TryAcquireSRWLockExclusive);
++                static const auto pTryAcquireSRWLockExclusive = []() -> PFN_TryAcquireSRWLockExclusive {
++                    const HMODULE library = LoadLibraryW(L"kernel32");
++                    if (!library)
++                        return nullptr;
++                    const FARPROC func = GetProcAddress(library, "TryAcquireSRWLockExclusive");
++                    if (!func)
++                        return nullptr;
++                    return reinterpret_cast<PFN_TryAcquireSRWLockExclusive>(func);
++                }();
++                return pTryAcquireSRWLockExclusive && TryAcquireSRWLockExclusive(&m_Lock) != FALSE;
++            }
+         private:
+             SRWLOCK m_Lock;
+         };
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
 index 8fc301e27f..ce803de948 100644
 --- a/src/corelib/CMakeLists.txt
@@ -652,6 +697,43 @@ index 9df9d96b5e..8c1ca09f7b 100644
  #  endif // Windows
  #elif defined(Q_OS_HAIKU)
      return "Haiku "_L1 + productVersion();
+diff --git a/src/corelib/io/qlockfile_win.cpp b/src/corelib/io/qlockfile_win.cpp
+index b9d7721517..33a4291035 100644
+--- a/src/corelib/io/qlockfile_win.cpp
++++ b/src/corelib/io/qlockfile_win.cpp
+@@ -13,8 +13,12 @@
+ #include "QtCore/qdebug.h"
+ #include "QtCore/qthread.h"
+ 
++#include <QtCore/private/qsystemlibrary_p.h>
++
+ QT_BEGIN_NAMESPACE
+ 
++using namespace Qt::StringLiterals;
++
+ static inline bool fileExists(const wchar_t *fileName)
+ {
+     WIN32_FILE_ATTRIBUTE_DATA  data;
+@@ -96,12 +100,16 @@ bool QLockFilePrivate::isProcessRunning(qint64 pid, const QString &appname)
+ 
+ QString QLockFilePrivate::processNameByPid(qint64 pid)
+ {
++    static const auto pGetModuleFileNameExW =
++        reinterpret_cast<decltype(&::GetModuleFileNameExW)>(
++            QSystemLibrary::resolve(u"psapi"_s, "GetModuleFileNameExW"));
++    if (!pGetModuleFileNameExW)
++        return QString();
+     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, DWORD(pid));
+-    if (!hProcess) {
++    if (!hProcess)
+         return QString();
+-    }
+     wchar_t buf[MAX_PATH];
+-    const DWORD length = GetModuleFileNameExW(hProcess, NULL, buf, sizeof(buf) / sizeof(wchar_t));
++    const DWORD length = pGetModuleFileNameExW(hProcess, NULL, buf, sizeof(buf) / sizeof(wchar_t));
+     CloseHandle(hProcess);
+     if (!length)
+         return QString();
 diff --git a/src/corelib/kernel/qcoreapplication.cpp b/src/corelib/kernel/qcoreapplication.cpp
 index d9a42413e4..2bc9ec726d 100644
 --- a/src/corelib/kernel/qcoreapplication.cpp

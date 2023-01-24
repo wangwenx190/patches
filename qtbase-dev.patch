@@ -1,4 +1,4 @@
-From 50051733a786041eb2b164f0bbab223b07525036 Mon Sep 17 00:00:00 2001
+From 961a9ec2294eb0bd82be59dda55eaf3fd7c5bec2 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -72,7 +72,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/plugins/platforms/windows/CMakeLists.txt  |   6 +-
  .../platforms/windows/qwin10helpers.cpp       |  43 +-
  .../platforms/windows/qwindowsapplication.cpp |  12 +-
- .../platforms/windows/qwindowscontext.cpp     | 296 ++++++++--
+ .../platforms/windows/qwindowscontext.cpp     | 300 ++++++++--
  .../platforms/windows/qwindowscontext.h       | 132 ++++-
  .../platforms/windows/qwindowsdrag.cpp        |   7 +-
  .../platforms/windows/qwindowsintegration.cpp |   6 +-
@@ -96,7 +96,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 243 ++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 77 files changed, 1858 insertions(+), 2091 deletions(-)
+ 77 files changed, 1861 insertions(+), 2092 deletions(-)
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
  delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
@@ -3883,7 +3883,7 @@ index 5d1b6d348b..bfef10e673 100644
  
      const QColor btnFace = background;
 diff --git a/src/plugins/platforms/windows/qwindowscontext.cpp b/src/plugins/platforms/windows/qwindowscontext.cpp
-index 3fe91d2935..a4e9ea13aa 100644
+index 3fe91d2935..7d2e42212a 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.cpp
 +++ b/src/plugins/platforms/windows/qwindowscontext.cpp
 @@ -204,7 +204,8 @@ QWindowsContext::~QWindowsContext()
@@ -4135,7 +4135,20 @@ index 3fe91d2935..a4e9ea13aa 100644
          && !window->property(QWindowsWindow::embeddedNativeParentHandleProperty).isValid()
  #if QT_CONFIG(opengl) // /QTBUG-62901, EnableNonClientDpiScaling has problems with GL
          && (window->surfaceType() != QSurface::OpenGLSurface
-@@ -1596,4 +1693,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
+@@ -972,9 +1069,11 @@ static inline bool isInputMessage(UINT m)
+ // Note: This only works within WM_NCCREATE
+ static bool enableNonClientDpiScaling(HWND hwnd)
+ {
++    if (!QWindowsApi::instance()->pEnableNonClientDpiScaling)
++        return false;
+     bool result = false;
+     if (QWindowsContext::windowDpiAwareness(hwnd) == QtWindows::DpiAwareness::PerMonitor) {
+-        result = EnableNonClientDpiScaling(hwnd) != FALSE;
++        result = QWindowsApi::instance()->pEnableNonClientDpiScaling(hwnd) != FALSE;
+         if (!result) {
+             const DWORD errorCode = GetLastError();
+             qErrnoWarning(int(errorCode), "EnableNonClientDpiScaling() failed for HWND %p (%lu)",
+@@ -1596,4 +1695,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
      return false;
  }
  

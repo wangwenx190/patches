@@ -1,4 +1,4 @@
-From 5134585beb49a9bf639a0a5ab0c2da2ef30ba034 Mon Sep 17 00:00:00 2001
+From 551d3c480b2a31e0097ed0ae0a6b95aa19158943 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -13,21 +13,22 @@ Important changes list:
 06. Win32: Add more entries to QOperatingSystemVersion.
 07. Win32: Add environment variable to add offset to the system menu.
 08. Win32: Add environment variable to disable bitmap redirection.
-09. Win32: Restore Windows 7 compatibility (QtMutex & QtRhi & QPA).
-10. MSVC: Add support for VC-LTL.
-11. Other minor tweaks.
+09. Win32: Restore Windows 7 RTM compatibility (QtMutex & QtRhi & QPA).
+10. MSVC: Add support for VC-LTL (reduce final binary size).
+11. MSVC: Add support for YY-Thunks (can help Qt run on Windows Vista RTM).
+12. Other minor tweaks.
 
 Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 ---
- build-test.bat                                |  16 +
- cmake/QtBaseGlobalTargets.cmake               |   1 +
- cmake/QtBuild.cmake                           |   7 +
+ build-test.bat                                |  27 +
+ cmake/QtBaseGlobalTargets.cmake               |   2 +
+ cmake/QtBuild.cmake                           |   9 +
  cmake/QtCompilerOptimization.cmake            |  15 +-
- cmake/QtInternalTargets.cmake                 |  37 +-
+ cmake/QtInternalTargets.cmake                 |  56 +-
  cmake/VC-LTL.cmake                            |  94 +++
- configure.cmake                               |   5 +
- qt_cmdline.cmake                              |   1 +
- .../VulkanMemoryAllocator/vk_mem_alloc.h      |  30 +-
+ cmake/YY-Thunks.cmake                         |  90 +++
+ configure.cmake                               |  10 +
+ qt_cmdline.cmake                              |   2 +
  src/corelib/CMakeLists.txt                    |  10 +-
  src/corelib/global/qlibraryinfo.cpp           |  20 +-
  src/corelib/global/qlibraryinfo.h             |   5 +
@@ -35,11 +36,14 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/global/qoperatingsystemversion.h  |  40 ++
  .../global/qoperatingsystemversion_win.cpp    |  20 +-
  src/corelib/global/qsysinfo.cpp               |  34 +-
+ src/corelib/io/qfilesystemengine_win.cpp      | 108 ++--
+ src/corelib/io/qfilesystemiterator_win.cpp    |   6 +-
  src/corelib/io/qlockfile_win.cpp              |  14 +-
- src/corelib/kernel/qcoreapplication.cpp       |  11 +
+ src/corelib/io/qstandardpaths_win.cpp         |   4 +
+ src/corelib/kernel/qcoreapplication.cpp       |  39 ++
  src/corelib/kernel/qeventdispatcher_win.cpp   |  12 +-
  src/corelib/kernel/qfunctions_win.cpp         |  10 +-
- src/corelib/plugin/qsystemlibrary.cpp         |  39 +-
+ src/corelib/plugin/qsystemlibrary.cpp         |  46 +-
  src/corelib/text/qlocale_win.cpp              |  23 +-
  src/corelib/thread/qfutex_p.h                 |  76 ++-
  src/corelib/thread/qlocking_p.h               |   7 +-
@@ -47,33 +51,22 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/thread/qmutex_p.h                 |   9 +-
  src/corelib/thread/qmutex_win.cpp             |  30 +
  src/corelib/thread/qwaitcondition_p.h         |   7 +-
- src/gui/CMakeLists.txt                        |  29 -
- .../windows/apisupport/qwindowsuiawrapper.cpp |  89 ---
- .../windows/apisupport/qwindowsuiawrapper_p.h |  67 ---
- .../windows/apisupport/uiaattributeids_p.h    |  63 --
- .../apisupport/uiaclientinterfaces_p.h        | 230 --------
- .../windows/apisupport/uiacontroltypeids_p.h  |  60 --
- .../windows/apisupport/uiaerrorids_p.h        |  26 -
- .../windows/apisupport/uiaeventids_p.h        |  54 --
- .../windows/apisupport/uiageneralids_p.h      |  21 -
- .../windows/apisupport/uiapatternids_p.h      |  53 --
- .../windows/apisupport/uiapropertyids_p.h     | 188 ------
- .../apisupport/uiaserverinterfaces_p.h        | 367 ------------
- .../windows/apisupport/uiatypes_p.h           | 157 -----
+ src/gui/CMakeLists.txt                        |  30 -
  src/gui/opengl/qopengl.cpp                    |  32 +-
  src/gui/rhi/qrhid3d11.cpp                     | 538 +++++++++++-------
  src/gui/rhi/qrhid3d11_p_p.h                   |   3 +-
+ src/gui/rhi/qrhid3d12.cpp                     | 143 +++--
  .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
  src/gui/text/windows/qwindowsfontdatabase.cpp |   3 +-
  .../text/windows/qwindowsfontdatabasebase.cpp |  21 +-
  .../windows/qwindowsfontenginedirectwrite.cpp |   9 +-
+ .../socket/qnativesocketengine_win.cpp        |  21 +-
  .../qnetworklistmanagerevents.cpp             |  54 +-
  src/plugins/platforms/CMakeLists.txt          |   9 -
  src/plugins/platforms/windows/CMakeLists.txt  |   6 +-
  .../platforms/windows/qwin10helpers.cpp       |  43 +-
- .../platforms/windows/qwindowsapplication.cpp |  12 +-
- .../platforms/windows/qwindowscontext.cpp     | 298 ++++++++--
- .../platforms/windows/qwindowscontext.h       | 132 ++++-
+ .../platforms/windows/qwindowscontext.cpp     | 283 ++++++++-
+ .../platforms/windows/qwindowscontext.h       | 130 +++++
  .../platforms/windows/qwindowsdrag.cpp        |   7 +-
  .../platforms/windows/qwindowsintegration.cpp |  12 +-
  .../platforms/windows/qwindowskeymapper.cpp   |  18 +-
@@ -82,7 +75,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../windows/qwindowspointerhandler.cpp        |  25 +-
  .../platforms/windows/qwindowsscreen.cpp      |  71 +--
  .../windows/qwindowssystemtrayicon.cpp        |   8 +-
- .../platforms/windows/qwindowstheme.cpp       | 135 +++--
+ .../platforms/windows/qwindowstheme.cpp       | 146 +++--
  .../platforms/windows/qwindowswindow.cpp      | 151 +++--
  .../uiautomation/qwindowsuiaaccessibility.cpp |   9 +-
  .../uiautomation/qwindowsuiabaseprovider.h    |   4 +-
@@ -96,29 +89,18 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 77 files changed, 1980 insertions(+), 2102 deletions(-)
+ 69 files changed, 2296 insertions(+), 810 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
+ create mode 100644 cmake/YY-Thunks.cmake
  create mode 100644 src/corelib/thread/qmutex_win.cpp
- delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
- delete mode 100644 src/gui/accessible/windows/apisupport/qwindowsuiawrapper_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiaattributeids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiaclientinterfaces_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiacontroltypeids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiaerrorids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiaeventids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiageneralids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiapatternids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiapropertyids_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiaserverinterfaces_p.h
- delete mode 100644 src/gui/accessible/windows/apisupport/uiatypes_p.h
 
 diff --git a/build-test.bat b/build-test.bat
 new file mode 100644
-index 0000000000..2d46d99b70
+index 0000000000..af8a3a0ce7
 --- /dev/null
 +++ b/build-test.bat
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,27 @@
 +@echo on
 +setlocal
 +call "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
@@ -128,30 +110,42 @@ index 0000000000..2d46d99b70
 +cd build-test
 +md cmake
 +cd cmake
-+cmake -Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DCMAKE_INSTALL_PREFIX="%~dp0build-test\install" -DCMAKE_CONFIGURATION_TYPES=Release;Debug -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=ON -DBUILD_SHARED_LIBS=ON -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF -DINPUT_intelcet=yes -DINPUT_spectre=yes -G"Ninja Multi-Config" "%~dp0"
++:: -DINPUT_mimetype_database_compression=zstd
++set __common_flags=-Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DQT_DISABLE_DEPRECATED_UP_TO=0x070000 -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF -DINPUT_intelcet=yes -DINPUT_spectre=yes -DINPUT_ehcont=yes
++cmake %__common_flags% -DCMAKE_INSTALL_PREFIX="%~dp0build-test\shared" -DCMAKE_CONFIGURATION_TYPES=Release;Debug -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=ON -DBUILD_SHARED_LIBS=ON -G"Ninja Multi-Config" "%~dp0"
 +cmake --build . --parallel
 +ninja install
++cd ..
++rd /s /q cmake
++md cmake
++cd cmake
++cmake %__common_flags% -DCMAKE_INSTALL_PREFIX="%~dp0build-test\static" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF -DBUILD_SHARED_LIBS=OFF -GNinja "%~dp0"
++cmake --build . --parallel
++cmake --install .
++cd ..
++rd /s /q cmake
 +endlocal
 +cd /d "%~dp0"
 +pause
 +exit /b 0
 diff --git a/cmake/QtBaseGlobalTargets.cmake b/cmake/QtBaseGlobalTargets.cmake
-index cc551ed08f..6a73fb5037 100644
+index 6a885fc4ce..286cbfe720 100644
 --- a/cmake/QtBaseGlobalTargets.cmake
 +++ b/cmake/QtBaseGlobalTargets.cmake
-@@ -286,6 +286,7 @@ qt_copy_or_install(FILES
+@@ -287,6 +287,8 @@ qt_copy_or_install(FILES
                     cmake/QtWasmHelpers.cmake
                     cmake/QtWrapperScriptHelpers.cmake
                     cmake/QtWriteArgsFile.cmake
 +                   cmake/VC-LTL.cmake
++                   cmake/YY-Thunks.cmake
                     cmake/modulecppexports.h.in
                     cmake/modulecppexports_p.h.in
                     cmake/qbatchedtestrunner.in.cpp
 diff --git a/cmake/QtBuild.cmake b/cmake/QtBuild.cmake
-index 13772fce86..d59eb31947 100644
+index 322926a5b3..d75d62c674 100644
 --- a/cmake/QtBuild.cmake
 +++ b/cmake/QtBuild.cmake
-@@ -570,3 +570,10 @@ _qt_internal_find_host_info_package("${__qt_build_requires_host_info_package}")
+@@ -573,3 +573,12 @@ _qt_internal_find_host_info_package("${__qt_build_requires_host_info_package}")
  if(CMAKE_VERSION VERSION_LESS "3.19.0")
      variable_watch(CMAKE_CURRENT_LIST_DIR qt_watch_current_list_dir)
  endif()
@@ -161,6 +155,8 @@ index 13772fce86..d59eb31947 100644
 +    if("x${SupportLTL}" STREQUAL "xtrue")
 +        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 +    endif()
++    set(YYTHUNKS_TARGET_OS "WinXP" CACHE STRING "" FORCE)
++    include(YY-Thunks)
 +endif()
 diff --git a/cmake/QtCompilerOptimization.cmake b/cmake/QtCompilerOptimization.cmake
 index b5b49ab78a..2a756b229b 100644
@@ -194,7 +190,7 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 21730457d8..b70ae2f2a2 100644
+index 21730457d8..9c5f7bf78b 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
 @@ -255,6 +255,11 @@ if (MSVC)
@@ -203,7 +199,7 @@ index 21730457d8..b70ae2f2a2 100644
      endif()
 +    if (MSVC_VERSION GREATER_EQUAL 1925 AND NOT CLANG) # Visual Studio 2019 version 16.5
 +        target_compile_options(PlatformCommonInternal INTERFACE
-+            $<$<NOT:$<CONFIG:Debug>>:-QIntel-jcc-erratum>
++            $<$<CONFIG:Release>:-QIntel-jcc-erratum>
 +        )
 +    endif()
  
@@ -231,7 +227,7 @@ index 21730457d8..b70ae2f2a2 100644
  endif()
  
  if(MINGW)
-@@ -281,9 +292,11 @@ endif()
+@@ -281,16 +292,49 @@ endif()
  
  if(QT_FEATURE_intelcet)
      if(MSVC)
@@ -240,13 +236,14 @@ index 21730457d8..b70ae2f2a2 100644
 -        )
 +        if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
 +            target_link_options(PlatformCommonInternal INTERFACE
-+                -CETCOMPAT
++                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
 +            )
 +        endif()
      else()
          target_compile_options(PlatformCommonInternal INTERFACE
-             -fcf-protection=full
-@@ -291,6 +304,20 @@ if(QT_FEATURE_intelcet)
+-            -fcf-protection=full
++            $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
+         )
      endif()
  endif()
  
@@ -261,6 +258,23 @@ index 21730457d8..b70ae2f2a2 100644
 +                -Qspectre
 +            )
 +        endif()
++    else()
++        # TODO
++    endif()
++endif()
++
++if(QT_FEATURE_ehcont)
++    if(MSVC)
++        if(MSVC_VERSION GREATER_EQUAL 1927) # Visual Studio 2019 version 16.7
++            target_compile_options(PlatformCommonInternal INTERFACE
++                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
++            )
++            target_compile_options(PlatformCommonInternal INTERFACE
++                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
++            )
++        endif()
++    else()
++        # TODO
 +    endif()
 +endif()
 +
@@ -367,11 +381,107 @@ index 0000000000..2bab2f21d6
 +if(VC_LTL_Root)
 +    include("${VC_LTL_Root}\\config\\config.cmake")
 +endif()
+diff --git a/cmake/YY-Thunks.cmake b/cmake/YY-Thunks.cmake
+new file mode 100644
+index 0000000000..92532d72dc
+--- /dev/null
++++ b/cmake/YY-Thunks.cmake
+@@ -0,0 +1,90 @@
++#[[
++  MIT License
++
++  Copyright (C) 2023 by wangwenx190 (Yuhang Zhao)
++
++  Permission is hereby granted, free of charge, to any person obtaining a copy
++  of this software and associated documentation files (the "Software"), to deal
++  in the Software without restriction, including without limitation the rights
++  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++  copies of the Software, and to permit persons to whom the Software is
++  furnished to do so, subject to the following conditions:
++
++  The above copyright notice and this permission notice shall be included in
++  all copies or substantial portions of the Software.
++
++  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++  SOFTWARE.
++]]
++
++# https://github.com/Chuyu-Team/YY-Thunks
++
++if(NOT MSVC OR DEFINED __YY_THUNKS_CMAKE_INCLUDE_GUARD)
++    return()
++endif()
++set(__YY_THUNKS_CMAKE_INCLUDE_GUARD 1)
++
++if(NOT DEFINED YYTHUNKS_TARGET_OS)
++    set(YYTHUNKS_TARGET_OS "Vista" CACHE STRING "Supported values: Vista, WinXP" FORCE)
++endif()
++
++set(__yy_thunks_dir)
++if(DEFINED ENV{YYTHUNKS_INSTALL_DIR} AND EXISTS "$ENV{YYTHUNKS_INSTALL_DIR}")
++    set(__yy_thunks_dir "$ENV{YYTHUNKS_INSTALL_DIR}")
++else()
++    set(__yy_thunks_reg)
++    cmake_host_system_information(RESULT __yy_thunks_reg
++        QUERY WINDOWS_REGISTRY "HKCU/Code/YY-Thunks"
++        VALUE "Root")
++    if(__yy_thunks_reg AND EXISTS "${__yy_thunks_reg}")
++        set(__yy_thunks_dir "${__yy_thunks_reg}")
++    elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/YY-Thunks")
++        set(__yy_thunks_dir "${CMAKE_CURRENT_LIST_DIR}/YY-Thunks")
++    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/YY-Thunks")
++        set(__yy_thunks_dir "${CMAKE_CURRENT_SOURCE_DIR}/YY-Thunks")
++    elseif(EXISTS "${PROJECT_SOURCE_DIR}/YY-Thunks")
++        set(__yy_thunks_dir "${PROJECT_SOURCE_DIR}/YY-Thunks")
++    elseif(EXISTS "${CMAKE_SOURCE_DIR}/YY-Thunks")
++        set(__yy_thunks_dir "${CMAKE_SOURCE_DIR}/YY-Thunks")
++    elseif(EXISTS "${CMAKE_SOURCE_DIR}/../YY-Thunks")
++        set(__yy_thunks_dir "${CMAKE_SOURCE_DIR}/../YY-Thunks")
++    endif()
++endif()
++
++if(__yy_thunks_dir AND EXISTS "${__yy_thunks_dir}")
++    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
++        set(__yy_thunks_arch x64)
++    else()
++        set(__yy_thunks_arch x86)
++    endif()
++    set(__yy_thunks_obj "${__yy_thunks_dir}/objs/${__yy_thunks_arch}/YY_Thunks_for_${YYTHUNKS_TARGET_OS}.obj")
++    if(EXISTS "${__yy_thunks_obj}")
++        set(YYTHUNKS_FOUND TRUE CACHE BOOL "" FORCE)
++        set(YYTHUNKS_INSTALL_DIR "${__yy_thunks_dir}" CACHE STRING "" FORCE)
++        set(YYTHUNKS_OBJ_PATH "${__yy_thunks_obj}" CACHE STRING "" FORCE)
++        add_link_options("${__yy_thunks_obj}")
++        message("###################################################################################################")
++        message("#                                                                                                 #")
++        message("#           ██    ██ ██    ██       ████████ ██   ██ ██    ██ ███    ██ ██   ██ ███████           #")
++        message("#            ██  ██   ██  ██           ██    ██   ██ ██    ██ ████   ██ ██  ██  ██                #")
++        message("#             ████     ████   █████    ██    ███████ ██    ██ ██ ██  ██ █████   ███████           #")
++        message("#              ██       ██             ██    ██   ██ ██    ██ ██  ██ ██ ██  ██       ██           #")
++        message("#              ██       ██             ██    ██   ██  ██████  ██   ████ ██   ██ ███████           #")
++        message("#                                                                                                 #")
++        message("###################################################################################################")
++        message("")
++        message(" YY-Thunks install dir     :" ${__yy_thunks_dir})
++        message(" YY-Thunks target platform :" ${YYTHUNKS_TARGET_OS})
++        message(" YY-Thunks obj file path   :" ${__yy_thunks_obj})
++        message("")
++    else()
++        message(WARNING "YY-Thunks's obj file is missing!")
++    endif()
++else()
++    message(WARNING "Can't locate the YY-Thunks installation directory!")
++endif()
 diff --git a/configure.cmake b/configure.cmake
-index 4b3e6ff6d4..7abdcbe02b 100644
+index 4b3e6ff6d4..2695cc7dec 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1125,6 +1125,10 @@ qt_feature("intelcet" PRIVATE
+@@ -1125,6 +1125,14 @@ qt_feature("intelcet" PRIVATE
      LABEL "Using Intel CET"
      CONDITION ( INPUT_intelcet STREQUAL yes ) OR TEST_intelcet
  )
@@ -379,77 +489,40 @@ index 4b3e6ff6d4..7abdcbe02b 100644
 +    LABEL "Mitigate Spectre issues"
 +    CONDITION INPUT_spectre STREQUAL yes
 +)
++qt_feature("ehcont" PRIVATE
++    LABEL "Ehcont guard"
++    CONDITION INPUT_ehcont STREQUAL yes
++)
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1175,6 +1179,7 @@ qt_configure_add_summary_entry(ARGS "relocatable")
+@@ -1175,6 +1183,8 @@ qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
  qt_configure_add_summary_entry(ARGS "intelcet")
 +qt_configure_add_summary_entry(ARGS "spectre")
++qt_configure_add_summary_entry(ARGS "ehcont")
  qt_configure_add_summary_entry(
      ARGS "wasm-simd128"
      CONDITION ( TEST_architecture_arch STREQUAL wasm )
 diff --git a/qt_cmdline.cmake b/qt_cmdline.cmake
-index 5450b2562c..2da78922c8 100644
+index 5450b2562c..0bfc75636b 100644
 --- a/qt_cmdline.cmake
 +++ b/qt_cmdline.cmake
-@@ -74,6 +74,7 @@ qt_commandline_option(openssl-runtime TYPE void NAME openssl VALUE runtime)
+@@ -74,6 +74,8 @@ qt_commandline_option(openssl-runtime TYPE void NAME openssl VALUE runtime)
  qt_commandline_option(linker TYPE optionalString VALUES bfd gold lld mold)
  qt_commandline_option(ltcg TYPE boolean)
  qt_commandline_option(intelcet TYPE boolean)
 +qt_commandline_option(spectre TYPE boolean)
++qt_commandline_option(ehcont TYPE boolean)
  # special case begin
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
-diff --git a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
-index b8f9ab52aa..9e08c3257b 100644
---- a/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
-+++ b/src/3rdparty/VulkanMemoryAllocator/vk_mem_alloc.h
-@@ -2883,10 +2883,36 @@ static void vma_aligned_free(void* VMA_NULLABLE ptr)
-             VmaRWMutex() { InitializeSRWLock(&m_Lock); }
-             void LockRead() { AcquireSRWLockShared(&m_Lock); }
-             void UnlockRead() { ReleaseSRWLockShared(&m_Lock); }
--            bool TryLockRead() { return TryAcquireSRWLockShared(&m_Lock) != FALSE; }
-+            bool TryLockRead() {
-+                // TryAcquireSRWLockShared: available on Win7+
-+                using PFN_TryAcquireSRWLockShared = decltype(&::TryAcquireSRWLockShared);
-+                static const auto pTryAcquireSRWLockShared = []() -> PFN_TryAcquireSRWLockShared {
-+                    const HMODULE library = LoadLibraryW(L"kernel32");
-+                    if (!library)
-+                        return nullptr;
-+                    const FARPROC func = GetProcAddress(library, "TryAcquireSRWLockShared");
-+                    if (!func)
-+                        return nullptr;
-+                    return reinterpret_cast<PFN_TryAcquireSRWLockShared>(func);
-+                }();
-+                return pTryAcquireSRWLockShared && pTryAcquireSRWLockShared(&m_Lock) != FALSE;
-+            }
-             void LockWrite() { AcquireSRWLockExclusive(&m_Lock); }
-             void UnlockWrite() { ReleaseSRWLockExclusive(&m_Lock); }
--            bool TryLockWrite() { return TryAcquireSRWLockExclusive(&m_Lock) != FALSE; }
-+            bool TryLockWrite() {
-+                // TryAcquireSRWLockExclusive: available on Win7+
-+                using PFN_TryAcquireSRWLockExclusive = decltype(&::TryAcquireSRWLockExclusive);
-+                static const auto pTryAcquireSRWLockExclusive = []() -> PFN_TryAcquireSRWLockExclusive {
-+                    const HMODULE library = LoadLibraryW(L"kernel32");
-+                    if (!library)
-+                        return nullptr;
-+                    const FARPROC func = GetProcAddress(library, "TryAcquireSRWLockExclusive");
-+                    if (!func)
-+                        return nullptr;
-+                    return reinterpret_cast<PFN_TryAcquireSRWLockExclusive>(func);
-+                }();
-+                return pTryAcquireSRWLockExclusive && pTryAcquireSRWLockExclusive(&m_Lock) != FALSE;
-+            }
-         private:
-             SRWLOCK m_Lock;
-         };
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index e4461e3d7c..19c79afdbf 100644
+index 09ed1f9e77..8490d88950 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
-@@ -542,9 +542,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
+@@ -489,9 +489,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
  # from the wrong DLL at runtime and crash!
  qt_internal_extend_target(Core CONDITION QT_FEATURE_thread AND WIN32
      SOURCES
@@ -460,7 +533,7 @@ index e4461e3d7c..19c79afdbf 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -822,12 +821,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -757,12 +756,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -473,14 +546,14 @@ index e4461e3d7c..19c79afdbf 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1337,6 +1330,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1283,6 +1276,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
 +    thread/qmutex_win.cpp
      PROPERTIES HEADER_FILE_ONLY ON)  # special case: These files are included by qmutex.cpp!
  
- 
+ set_source_files_properties(serialization/qcborstreamwriter.cpp # CBOR macro clashes
 diff --git a/src/corelib/global/qlibraryinfo.cpp b/src/corelib/global/qlibraryinfo.cpp
 index 715bda488c..6973de9d76 100644
 --- a/src/corelib/global/qlibraryinfo.cpp
@@ -536,7 +609,7 @@ index d4e8f8b050..6cd0b448cf 100644
  
  #endif // QLIBRARYINFO_H
 diff --git a/src/corelib/global/qoperatingsystemversion.cpp b/src/corelib/global/qoperatingsystemversion.cpp
-index b9da31149e..49f30720bd 100644
+index c57483273f..a5aff6d0b6 100644
 --- a/src/corelib/global/qoperatingsystemversion.cpp
 +++ b/src/corelib/global/qoperatingsystemversion.cpp
 @@ -361,6 +361,9 @@ bool QOperatingSystemVersionBase::isAnyOfType(std::initializer_list<OSType> type
@@ -564,7 +637,7 @@ index b9da31149e..49f30720bd 100644
      \variable QOperatingSystemVersion::Windows10_1809
      \brief a version corresponding to Windows 10 October 2018 Update
 diff --git a/src/corelib/global/qoperatingsystemversion.h b/src/corelib/global/qoperatingsystemversion.h
-index 1e4eb5cc49..499a196fa7 100644
+index 80a4cbbacb..fef7907459 100644
 --- a/src/corelib/global/qoperatingsystemversion.h
 +++ b/src/corelib/global/qoperatingsystemversion.h
 @@ -123,6 +123,7 @@ public:
@@ -583,7 +656,7 @@ index 1e4eb5cc49..499a196fa7 100644
      static constexpr QOperatingSystemVersionBase Windows7 { QOperatingSystemVersionBase::Windows, 6, 1 };
      static constexpr QOperatingSystemVersionBase Windows8 { QOperatingSystemVersionBase::Windows, 6, 2 };
      static constexpr QOperatingSystemVersionBase Windows8_1 { QOperatingSystemVersionBase::Windows, 6, 3 };
-@@ -188,6 +190,12 @@ public:
+@@ -184,6 +186,12 @@ public:
      static constexpr QOperatingSystemVersionBase Android11 { QOperatingSystemVersionBase::Android, 11, 0 };
  #endif // New (static constexpr) entries go here, only cherry-pick as far back as 6.3 (QTBUG-97808):
  
@@ -596,7 +669,7 @@ index 1e4eb5cc49..499a196fa7 100644
      static constexpr QOperatingSystemVersionBase Windows10_1809 { QOperatingSystemVersionBase::Windows, 10, 0, 17763 }; // RS5
      static constexpr QOperatingSystemVersionBase Windows10_1903 { QOperatingSystemVersionBase::Windows, 10, 0, 18362 }; // 19H1
      static constexpr QOperatingSystemVersionBase Windows10_1909 { QOperatingSystemVersionBase::Windows, 10, 0, 18363 }; // 19H2
-@@ -206,6 +214,38 @@ public:
+@@ -202,6 +210,38 @@ public:
  
      static constexpr QOperatingSystemVersionBase MacOSVentura { QOperatingSystemVersionBase::MacOS, 13, 0 };
  
@@ -674,7 +747,7 @@ index a209fb17b6..50edb719fd 100644
                  // If the current host OS is a domain controller and the override OS
                  // is also a server type OS, preserve that information
 diff --git a/src/corelib/global/qsysinfo.cpp b/src/corelib/global/qsysinfo.cpp
-index 0502e77177..7860334ea0 100644
+index dace55b6ce..45918ca797 100644
 --- a/src/corelib/global/qsysinfo.cpp
 +++ b/src/corelib/global/qsysinfo.cpp
 @@ -165,12 +165,17 @@ static inline QString windowsDisplayVersion()
@@ -737,6 +810,150 @@ index 0502e77177..7860334ea0 100644
  #  endif // Windows
  #elif defined(Q_OS_HAIKU)
      return "Haiku "_L1 + productVersion();
+diff --git a/src/corelib/io/qfilesystemengine_win.cpp b/src/corelib/io/qfilesystemengine_win.cpp
+index 49f375c4bb..61e74e9c84 100644
+--- a/src/corelib/io/qfilesystemengine_win.cpp
++++ b/src/corelib/io/qfilesystemengine_win.cpp
+@@ -1080,7 +1080,10 @@ QByteArray QFileSystemEngine::id(const QFileSystemEntry &entry)
+ //static
+ QByteArray QFileSystemEngine::id(HANDLE fHandle)
+ {
+-    return fileIdWin8(HANDLE(fHandle));
++    if (QOperatingSystemVersion::isWin8OrGreater())
++        return fileIdWin8(HANDLE(fHandle));
++    else
++        return fileId(HANDLE(fHandle));
+ }
+ 
+ //static
+@@ -1799,41 +1802,76 @@ bool QFileSystemEngine::moveFileToTrash(const QFileSystemEntry &source,
+     // we need the "display name" of the file, so can't use nativeAbsoluteFilePath
+     const QString sourcePath = QDir::toNativeSeparators(absoluteName(source).filePath());
+ 
+-    QComHelper comHelper;
+-
+-    IFileOperation *pfo = nullptr;
+-    IShellItem *deleteItem = nullptr;
+-    FileOperationProgressSink *sink = nullptr;
+-    HRESULT hres = E_FAIL;
+-
+-    auto coUninitialize = qScopeGuard([&](){
+-        if (sink)
+-            sink->Release();
+-        if (deleteItem)
+-            deleteItem->Release();
+-        if (pfo)
+-            pfo->Release();
++    /*
++        Windows 7 insists on showing confirmation dialogs and ignores the respective
++        flags set on IFileOperation. Fall back to SHFileOperation, even if it doesn't
++        give us the new location of the file.
++    */
++    if (QOperatingSystemVersion::isWin8OrGreater()) {
++        QComHelper comHelper;
++
++        IFileOperation *pfo = nullptr;
++        IShellItem *deleteItem = nullptr;
++        FileOperationProgressSink *sink = nullptr;
++        HRESULT hres = E_FAIL;
++
++        auto coUninitialize = qScopeGuard([&](){
++            if (sink)
++                sink->Release();
++            if (deleteItem)
++                deleteItem->Release();
++            if (pfo)
++                pfo->Release();
++            if (!SUCCEEDED(hres))
++                error = QSystemError(hres, QSystemError::NativeError);
++        });
++
++        hres = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
++        if (!pfo)
++            return false;
++        pfo->SetOperationFlags(FOF_ALLOWUNDO | FOFX_RECYCLEONDELETE | FOF_NOCONFIRMATION
++                            | FOF_SILENT | FOF_NOERRORUI);
++        hres = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t*>(sourcePath.utf16()),
++                                        nullptr, IID_PPV_ARGS(&deleteItem));
++        if (!deleteItem)
++            return false;
++        sink = new FileOperationProgressSink;
++        hres = pfo->DeleteItem(deleteItem, static_cast<IFileOperationProgressSink*>(sink));
+         if (!SUCCEEDED(hres))
+-            error = QSystemError(hres, QSystemError::NativeError);
+-    });
+-
+-    hres = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
+-    if (!pfo)
+-        return false;
+-    pfo->SetOperationFlags(FOF_ALLOWUNDO | FOFX_RECYCLEONDELETE | FOF_NOCONFIRMATION
+-                        | FOF_SILENT | FOF_NOERRORUI);
+-    hres = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t*>(sourcePath.utf16()),
+-                                    nullptr, IID_PPV_ARGS(&deleteItem));
+-    if (!deleteItem)
+-        return false;
+-    sink = new FileOperationProgressSink;
+-    hres = pfo->DeleteItem(deleteItem, static_cast<IFileOperationProgressSink*>(sink));
+-    if (!SUCCEEDED(hres))
+-        return false;
+-    hres = pfo->PerformOperations();
+-    if (!SUCCEEDED(hres))
+-        return false;
+-    newLocation = QFileSystemEntry(sink->targetPath);
++            return false;
++        hres = pfo->PerformOperations();
++        if (!SUCCEEDED(hres))
++            return false;
++        newLocation = QFileSystemEntry(sink->targetPath);
++    } else {
++        // double null termination needed, so can't use QString::utf16
++        QVarLengthArray<wchar_t, MAX_PATH + 1> winFile(sourcePath.length() + 2);
++        sourcePath.toWCharArray(winFile.data());
++        winFile[sourcePath.length()] = wchar_t{};
++        winFile[sourcePath.length() + 1] = wchar_t{};
++
++        SHFILEOPSTRUCTW operation;
++        operation.hwnd = nullptr;
++        operation.wFunc = FO_DELETE;
++        operation.pFrom = winFile.constData();
++        operation.pTo = nullptr;
++        operation.fFlags = FOF_ALLOWUNDO | FOF_NO_UI;
++        operation.fAnyOperationsAborted = FALSE;
++        operation.hNameMappings = nullptr;
++        operation.lpszProgressTitle = nullptr;
++
++        int result = SHFileOperation(&operation);
++        if (result != 0) {
++            error = QSystemError(result, QSystemError::NativeError);
++            return false;
++        }
++        /*
++            This implementation doesn't let us know where the file ended up, even if
++            we would specify FOF_WANTMAPPINGHANDLE | FOF_RENAMEONCOLLISION, as
++            FOF_RENAMEONCOLLISION has no effect unless files are moved, copied, or renamed.
++        */
++        Q_UNUSED(newLocation);
++    }
+ 
+     return true;
+ }
+diff --git a/src/corelib/io/qfilesystemiterator_win.cpp b/src/corelib/io/qfilesystemiterator_win.cpp
+index 2c16cc7f6b..5be794920c 100644
+--- a/src/corelib/io/qfilesystemiterator_win.cpp
++++ b/src/corelib/io/qfilesystemiterator_win.cpp
+@@ -55,8 +55,10 @@ bool QFileSystemIterator::advance(QFileSystemEntry &fileEntry, QFileSystemMetaDa
+         haveData = true;
+         int infoLevel = 0 ;         // FindExInfoStandard;
+         DWORD dwAdditionalFlags  = 0;
+-        dwAdditionalFlags = 2;  // FIND_FIRST_EX_LARGE_FETCH
+-        infoLevel = 1 ;         // FindExInfoBasic;
++        if (QOperatingSystemVersion::isWin7OrGreater()) {
++            dwAdditionalFlags = 2;  // FIND_FIRST_EX_LARGE_FETCH
++            infoLevel = 1 ;         // FindExInfoBasic;
++        }
+         int searchOps =  0;         // FindExSearchNameMatch
+         if (onlyDirs)
+             searchOps = 1 ;         // FindExSearchLimitToDirectories
 diff --git a/src/corelib/io/qlockfile_win.cpp b/src/corelib/io/qlockfile_win.cpp
 index b9d7721517..33a4291035 100644
 --- a/src/corelib/io/qlockfile_win.cpp
@@ -774,13 +991,43 @@ index b9d7721517..33a4291035 100644
      CloseHandle(hProcess);
      if (!length)
          return QString();
+diff --git a/src/corelib/io/qstandardpaths_win.cpp b/src/corelib/io/qstandardpaths_win.cpp
+index 13b8fe224a..581e2695fe 100644
+--- a/src/corelib/io/qstandardpaths_win.cpp
++++ b/src/corelib/io/qstandardpaths_win.cpp
+@@ -10,6 +10,7 @@
+ #include <qcoreapplication.h>
+ #endif
+ 
++#include <qoperatingsystemversion.h>
+ #include <qt_windows.h>
+ #include <shlobj.h>
+ #include <intshcut.h>
+@@ -60,6 +61,9 @@ static inline void appendTestMode(QString &path)
+ 
+ static bool isProcessLowIntegrity()
+ {
++    if (!QOperatingSystemVersion::isWin8OrGreater())
++        return false;
++
+     // same as GetCurrentProcessToken()
+     const auto process_token = HANDLE(quintptr(-4));
+ 
 diff --git a/src/corelib/kernel/qcoreapplication.cpp b/src/corelib/kernel/qcoreapplication.cpp
-index 0c4828b0f3..4124990446 100644
+index 3feb4cf4c4..fdf474efeb 100644
 --- a/src/corelib/kernel/qcoreapplication.cpp
 +++ b/src/corelib/kernel/qcoreapplication.cpp
-@@ -108,6 +108,10 @@ QT_BEGIN_NAMESPACE
- 
- using namespace Qt::StringLiterals;
+@@ -37,6 +37,7 @@
+ #include <qelapsedtimer.h>
+ #include <qlibraryinfo.h>
+ #include <qvarlengtharray.h>
++#include <qoperatingsystemversion.h>
+ #include <private/qfactoryloader_p.h>
+ #include <private/qfunctions_p.h>
+ #include <private/qlocale_p.h>
+@@ -122,6 +123,10 @@ Q_TRACE_POINT(qtcore, QCoreApplication_sendSpontaneousEvent, QObject *receiver,
+ Q_TRACE_POINT(qtcore, QCoreApplication_notify_entry, QObject *receiver, QEvent *event, QEvent::Type type);
+ Q_TRACE_POINT(qtcore, QCoreApplication_notify_exit, bool consumed, bool filtered);
  
 +#ifndef QT_BOOTSTRAPPED
 +static constexpr const char kWwx190EnvVar[] = "__wangwenx190__";
@@ -789,7 +1036,7 @@ index 0c4828b0f3..4124990446 100644
  #if defined(Q_OS_WIN) || defined(Q_OS_MAC)
  extern QString qAppFileName();
  #endif
-@@ -446,6 +450,9 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv)
+@@ -460,6 +465,9 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv)
  
  QCoreApplicationPrivate::~QCoreApplicationPrivate()
  {
@@ -799,7 +1046,41 @@ index 0c4828b0f3..4124990446 100644
  #ifndef QT_NO_QOBJECT
      cleanupThreadData();
  #endif
-@@ -786,6 +793,10 @@ void QCoreApplicationPrivate::init()
+@@ -582,6 +590,33 @@ void QCoreApplicationPrivate::initConsole()
+         // Unknown input, don't make any decision for the user.
+         return;
+     }
++    if (qEnvironmentVariableIntValue("QT_WIN_DEBUG_CONSOLE_USE_UTF8")) {
++        SetConsoleCP(CP_UTF8);
++        SetConsoleOutputCP(CP_UTF8);
++    }
++    if (consoleAllocated) {
++        SetConsoleTitleW([]() -> const wchar_t * {
++            const QString appName = QCoreApplication::applicationName();
++            if (appName.isEmpty())
++                return L"Qt debug window";
++            return reinterpret_cast<const wchar_t *>(
++                        (u"%1 debug window"_s.arg(appName)).utf16());
++        }());
++    }
++    if (QOperatingSystemVersion::isWin10OrGreater()) {
++        const auto enableVirtualTerminalProcessingForHandle =
++            [](const HANDLE handle) -> void {
++                if (!handle || handle == INVALID_HANDLE_VALUE)
++                    return;
++                DWORD mode = 0;
++                if (GetConsoleMode(handle, &mode) == FALSE)
++                    return;
++                mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
++                SetConsoleMode(handle, mode);
++            };
++        enableVirtualTerminalProcessingForHandle(GetStdHandle(STD_OUTPUT_HANDLE));
++        enableVirtualTerminalProcessingForHandle(GetStdHandle(STD_ERROR_HANDLE));
++    }
+     // The std{in,out,err} handles are read-only, so we need to pass in dummies.
+     FILE *in = nullptr;
+     FILE *out = nullptr;
+@@ -828,6 +863,10 @@ void Q_TRACE_INSTRUMENT(qtcore) QCoreApplicationPrivate::init()
      Q_ASSERT_X(!QCoreApplication::self, "QCoreApplication", "there should be only one application object");
      QCoreApplication::self = q;
  
@@ -884,7 +1165,7 @@ index ed0e25467c..2022ff2f24 100644
              return true;
          case APPMODEL_ERROR_NO_PACKAGE:
 diff --git a/src/corelib/plugin/qsystemlibrary.cpp b/src/corelib/plugin/qsystemlibrary.cpp
-index d3dff226d9..22b4f04340 100644
+index d3dff226d9..44129a432c 100644
 --- a/src/corelib/plugin/qsystemlibrary.cpp
 +++ b/src/corelib/plugin/qsystemlibrary.cpp
 @@ -42,9 +42,9 @@ using namespace Qt::StringLiterals;
@@ -892,30 +1173,41 @@ index d3dff226d9..22b4f04340 100644
  #endif
  
 -static QString qSystemDirectory()
-+static inline QString qSystemDirectory()
++[[nodiscard]] static inline QString qSystemDirectory()
  {
 -    static const QString result = []() -> QString {
 +    static const auto result = []() -> QString {
          QVarLengthArray<wchar_t, MAX_PATH> fullPath = {};
          UINT retLen = ::GetSystemDirectoryW(fullPath.data(), MAX_PATH);
          if (retLen > MAX_PATH) {
-@@ -57,10 +57,32 @@ static QString qSystemDirectory()
-     return result;
- }
- 
-+static inline bool isLoadFromSystem32Available()
+@@ -52,15 +52,39 @@ static QString qSystemDirectory()
+             retLen = ::GetSystemDirectoryW(fullPath.data(), retLen);
+         }
+         // in some rare cases retLen might be 0
+-        return QString::fromWCharArray(fullPath.constData(), int(retLen));
++        QString path = QString::fromWCharArray(fullPath.constData(), int(retLen));
++        // Remove any trailing line separators.
++        while (path.endsWith(u'\\') || path.endsWith(u'/'))
++            path.chop(1);
++        return path;
++    }();
++    return result;
++}
++
++[[nodiscard]] static inline bool isLoadFromSystem32Available()
 +{
 +    static const auto result = []() -> bool {
-+        const HMODULE library = ::LoadLibraryW(L"kernel32");
++        const QString filePath = qSystemDirectory() + u"\\kernel32.dll"_s;
++        const HMODULE library = ::LoadLibraryW(reinterpret_cast<const wchar_t *>(filePath.utf16()));
 +        if (!library)
 +            return false;
 +        const bool ret = ::GetProcAddress(library, "AddDllDirectory") != nullptr;
 +        ::FreeLibrary(library);
 +        return ret;
-+    }();
-+    return result;
-+}
-+
+     }();
+     return result;
+ }
+ 
  HINSTANCE QSystemLibrary::load(const wchar_t *libraryName, bool onlySystemDirectory /* = true */)
  {
 -    if (onlySystemDirectory)
@@ -925,16 +1217,13 @@ index d3dff226d9..22b4f04340 100644
 +    if (onlySystemDirectory) {
 +        if (isLoadFromSystem32Available())
 +            return ::LoadLibraryExW(libraryName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-+        QString path = qSystemDirectory();
-+        if (!path.endsWith(u'\\'))
-+            path.append(u'\\');
-+        path.append(fileName);
++        const QString path = qSystemDirectory() + u'\\' + fileName;
 +        return ::LoadLibraryW(reinterpret_cast<const wchar_t *>(path.utf16()));
 +    }
  
      QStringList searchOrder;
  
-@@ -72,16 +94,13 @@ HINSTANCE QSystemLibrary::load(const wchar_t *libraryName, bool onlySystemDirect
+@@ -72,17 +96,11 @@ HINSTANCE QSystemLibrary::load(const wchar_t *libraryName, bool onlySystemDirect
      const QString PATH(QLatin1StringView(qgetenv("PATH")));
      searchOrder << PATH.split(u';', Qt::SkipEmptyParts);
  
@@ -945,17 +1234,18 @@ index d3dff226d9..22b4f04340 100644
 +    for (int i = 0; i != searchOrder.count(); ++i) {
          QString fullPathAttempt = searchOrder.at(i);
 -        if (!fullPathAttempt.endsWith(u'\\')) {
-+        if (!fullPathAttempt.endsWith(u'\\'))
-             fullPathAttempt.append(u'\\');
+-            fullPathAttempt.append(u'\\');
 -        }
-         fullPathAttempt.append(fileName);
+-        fullPathAttempt.append(fileName);
 -        HINSTANCE inst = ::LoadLibrary(reinterpret_cast<const wchar_t *>(fullPathAttempt.utf16()));
-+        const HINSTANCE inst = ::LoadLibraryW(reinterpret_cast<const wchar_t *>(fullPathAttempt.utf16()));
-         if (inst != nullptr)
+-        if (inst != nullptr)
++        fullPathAttempt += u'\\' + fileName;
++        if (const HINSTANCE inst = ::LoadLibraryW(reinterpret_cast<const wchar_t *>(fullPathAttempt.utf16())))
              return inst;
      }
+     return nullptr;
 diff --git a/src/corelib/text/qlocale_win.cpp b/src/corelib/text/qlocale_win.cpp
-index cb8317784f..d85eafd854 100644
+index 43324fbfb6..0162e74ab2 100644
 --- a/src/corelib/text/qlocale_win.cpp
 +++ b/src/corelib/text/qlocale_win.cpp
 @@ -15,6 +15,7 @@
@@ -966,7 +1256,7 @@ index cb8317784f..d85eafd854 100644
  #   include <qt_windows.h>
  #   include <time.h>
  #endif
-@@ -656,17 +657,19 @@ QVariant QSystemLocalePrivate::uiLanguages()
+@@ -659,17 +660,19 @@ QVariant QSystemLocalePrivate::uiLanguages()
  {
      QStringList result;
  #if QT_CONFIG(cpp_winrt)
@@ -1143,7 +1433,7 @@ index 7b4aac9532..ae1a3a7313 100644
  #  include "qmutex_unix.cpp"
  #endif
 diff --git a/src/corelib/thread/qmutex_p.h b/src/corelib/thread/qmutex_p.h
-index 565de31ca0..7c9977599f 100644
+index 66d902d1c3..04957a96f3 100644
 --- a/src/corelib/thread/qmutex_p.h
 +++ b/src/corelib/thread/qmutex_p.h
 @@ -10,9 +10,10 @@
@@ -1160,7 +1450,7 @@ index 565de31ca0..7c9977599f 100644
  //
  // We mean it.
  //
-@@ -91,6 +92,8 @@ public:
+@@ -93,6 +94,8 @@ public:
      bool wakeup;
      pthread_mutex_t mutex;
      pthread_cond_t cond;
@@ -1224,10 +1514,10 @@ index cfb36ca30b..01bb000366 100644
  // We mean it.
  //
 diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
-index 923d1628c1..96b642f15f 100644
+index 3fd28d2a01..eb02717ff1 100644
 --- a/src/gui/CMakeLists.txt
 +++ b/src/gui/CMakeLists.txt
-@@ -412,11 +412,6 @@ qt_internal_extend_target(Gui CONDITION WIN32
+@@ -422,12 +422,6 @@ qt_internal_extend_target(Gui CONDITION WIN32
          ole32
          shell32
          user32
@@ -1236,10 +1526,11 @@ index 923d1628c1..96b642f15f 100644
 -        dxgi
 -        dxguid
 -        dcomp
+-        d3d12
  )
  
  if(QT_FEATURE_egl)
-@@ -450,21 +445,6 @@ qt_internal_extend_target(Gui CONDITION APPLE AND QT_FEATURE_accessibility
+@@ -463,21 +457,6 @@ qt_internal_extend_target(Gui CONDITION APPLE AND QT_FEATURE_accessibility
          ${FWFoundation}
  )
  
@@ -1261,7 +1552,7 @@ index 923d1628c1..96b642f15f 100644
  if(QT_FEATURE_accessibility AND QT_FEATURE_accessibility_atspi_bridge)
      set(atspi_accessibility ON)
  else()
-@@ -710,20 +690,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND WIN32
+@@ -723,20 +702,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND WIN32
  qt_internal_extend_target(Gui CONDITION QT_FEATURE_direct2d AND QT_FEATURE_directwrite AND WIN32
      SOURCES
          text/windows/qwindowsfontenginedirectwrite.cpp text/windows/qwindowsfontenginedirectwrite_p.h
@@ -1282,1453 +1573,6 @@ index 923d1628c1..96b642f15f 100644
  )
  
  qt_internal_extend_target(Gui CONDITION MINGW AND WIN32
-diff --git a/src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp b/src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
-deleted file mode 100644
-index d9ff723a61..0000000000
---- a/src/gui/accessible/windows/apisupport/qwindowsuiawrapper.cpp
-+++ /dev/null
-@@ -1,89 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#include <initguid.h>
--
--#include "qwindowsuiawrapper_p.h"
--#include <QtCore/private/qsystemlibrary_p.h>
--
--QT_BEGIN_NAMESPACE
--
--// private constructor
--QWindowsUiaWrapper::QWindowsUiaWrapper()
--{
--    QSystemLibrary uiaLib(QStringLiteral("UIAutomationCore"));
--    if (uiaLib.load()) {
--        m_pUiaReturnRawElementProvider = reinterpret_cast<PtrUiaReturnRawElementProvider>(uiaLib.resolve("UiaReturnRawElementProvider"));
--        m_pUiaHostProviderFromHwnd = reinterpret_cast<PtrUiaHostProviderFromHwnd>(uiaLib.resolve("UiaHostProviderFromHwnd"));
--        m_pUiaRaiseAutomationPropertyChangedEvent = reinterpret_cast<PtrUiaRaiseAutomationPropertyChangedEvent>(uiaLib.resolve("UiaRaiseAutomationPropertyChangedEvent"));
--        m_pUiaRaiseAutomationEvent = reinterpret_cast<PtrUiaRaiseAutomationEvent>(uiaLib.resolve("UiaRaiseAutomationEvent"));
--        m_pUiaRaiseNotificationEvent = reinterpret_cast<PtrUiaRaiseNotificationEvent>(uiaLib.resolve("UiaRaiseNotificationEvent"));
--        m_pUiaClientsAreListening = reinterpret_cast<PtrUiaClientsAreListening>(uiaLib.resolve("UiaClientsAreListening"));
--    }
--}
--
--QWindowsUiaWrapper::~QWindowsUiaWrapper()
--{
--}
--
--// shared instance
--QWindowsUiaWrapper *QWindowsUiaWrapper::instance()
--{
--    static QWindowsUiaWrapper wrapper;
--    return &wrapper;
--}
--
--// True if most symbols resolved (UiaRaiseNotificationEvent is optional).
--BOOL QWindowsUiaWrapper::ready()
--{
--    return m_pUiaReturnRawElementProvider
--        && m_pUiaHostProviderFromHwnd
--        && m_pUiaRaiseAutomationPropertyChangedEvent
--        && m_pUiaRaiseAutomationEvent
--        && m_pUiaClientsAreListening;
--}
--
--BOOL QWindowsUiaWrapper::clientsAreListening()
--{
--    if (!m_pUiaClientsAreListening)
--        return FALSE;
--    return m_pUiaClientsAreListening();
--}
--
--LRESULT QWindowsUiaWrapper::returnRawElementProvider(HWND hwnd, WPARAM wParam, LPARAM lParam, IRawElementProviderSimple *el)
--{
--    if (!m_pUiaReturnRawElementProvider)
--        return static_cast<LRESULT>(NULL);
--    return m_pUiaReturnRawElementProvider(hwnd, wParam, lParam, el);
--}
--
--HRESULT QWindowsUiaWrapper::hostProviderFromHwnd(HWND hwnd, IRawElementProviderSimple **ppProvider)
--{
--    if (!m_pUiaHostProviderFromHwnd)
--        return UIA_E_NOTSUPPORTED;
--    return m_pUiaHostProviderFromHwnd(hwnd, ppProvider);
--}
--
--HRESULT QWindowsUiaWrapper::raiseAutomationPropertyChangedEvent(IRawElementProviderSimple *pProvider, PROPERTYID id, VARIANT oldValue, VARIANT newValue)
--{
--    if (!m_pUiaRaiseAutomationPropertyChangedEvent)
--        return UIA_E_NOTSUPPORTED;
--    return m_pUiaRaiseAutomationPropertyChangedEvent(pProvider, id, oldValue, newValue);
--}
--
--HRESULT QWindowsUiaWrapper::raiseAutomationEvent(IRawElementProviderSimple *pProvider, EVENTID id)
--{
--    if (!m_pUiaRaiseAutomationEvent)
--        return UIA_E_NOTSUPPORTED;
--    return m_pUiaRaiseAutomationEvent(pProvider, id);
--}
--
--HRESULT QWindowsUiaWrapper::raiseNotificationEvent(IRawElementProviderSimple *provider, NotificationKind notificationKind, NotificationProcessing notificationProcessing, BSTR displayString, BSTR activityId)
--{
--    if (!m_pUiaRaiseNotificationEvent)
--        return UIA_E_NOTSUPPORTED;
--    return m_pUiaRaiseNotificationEvent(provider, notificationKind, notificationProcessing, displayString, activityId);
--}
--
--QT_END_NAMESPACE
--
-diff --git a/src/gui/accessible/windows/apisupport/qwindowsuiawrapper_p.h b/src/gui/accessible/windows/apisupport/qwindowsuiawrapper_p.h
-deleted file mode 100644
-index 05b93f8393..0000000000
---- a/src/gui/accessible/windows/apisupport/qwindowsuiawrapper_p.h
-+++ /dev/null
-@@ -1,67 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef QWINDOWSUIAWRAPPER_H
--#define QWINDOWSUIAWRAPPER_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API.  It exists for the convenience
--// of other Qt classes.  This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#include <QtGui/private/qtguiglobal_p.h>
--
--#include "uiatypes_p.h"
--#include "uiaattributeids_p.h"
--#include "uiacontroltypeids_p.h"
--#include "uiaerrorids_p.h"
--#include "uiaeventids_p.h"
--#include "uiageneralids_p.h"
--#include "uiapatternids_p.h"
--#include "uiapropertyids_p.h"
--#include "uiaserverinterfaces_p.h"
--#include "uiaclientinterfaces_p.h"
--
--QT_REQUIRE_CONFIG(accessibility);
--
--QT_BEGIN_NAMESPACE
--
--class Q_GUI_EXPORT QWindowsUiaWrapper
--{
--    QWindowsUiaWrapper();
--    virtual ~QWindowsUiaWrapper();
--public:
--    static QWindowsUiaWrapper *instance();
--    BOOL ready();
--    BOOL clientsAreListening();
--    LRESULT returnRawElementProvider(HWND hwnd, WPARAM wParam, LPARAM lParam, IRawElementProviderSimple *el);
--    HRESULT hostProviderFromHwnd(HWND hwnd, IRawElementProviderSimple **ppProvider);
--    HRESULT raiseAutomationPropertyChangedEvent(IRawElementProviderSimple *pProvider, PROPERTYID id, VARIANT oldValue, VARIANT newValue);
--    HRESULT raiseAutomationEvent(IRawElementProviderSimple *pProvider, EVENTID id);
--    HRESULT raiseNotificationEvent(IRawElementProviderSimple *provider, NotificationKind notificationKind, NotificationProcessing notificationProcessing, BSTR displayString, BSTR activityId);
--
--private:
--    typedef LRESULT (WINAPI *PtrUiaReturnRawElementProvider)(HWND, WPARAM, LPARAM, IRawElementProviderSimple *);
--    typedef HRESULT (WINAPI *PtrUiaHostProviderFromHwnd)(HWND, IRawElementProviderSimple **);
--    typedef HRESULT (WINAPI *PtrUiaRaiseAutomationPropertyChangedEvent)(IRawElementProviderSimple *, PROPERTYID, VARIANT, VARIANT);
--    typedef HRESULT (WINAPI *PtrUiaRaiseAutomationEvent)(IRawElementProviderSimple *, EVENTID);
--    typedef HRESULT (WINAPI *PtrUiaRaiseNotificationEvent)(IRawElementProviderSimple *, NotificationKind, NotificationProcessing, BSTR, BSTR);
--    typedef BOOL (WINAPI *PtrUiaClientsAreListening)();
--    PtrUiaReturnRawElementProvider             m_pUiaReturnRawElementProvider = nullptr;
--    PtrUiaHostProviderFromHwnd                 m_pUiaHostProviderFromHwnd = nullptr;
--    PtrUiaRaiseAutomationPropertyChangedEvent  m_pUiaRaiseAutomationPropertyChangedEvent = nullptr;
--    PtrUiaRaiseAutomationEvent                 m_pUiaRaiseAutomationEvent = nullptr;
--    PtrUiaRaiseNotificationEvent               m_pUiaRaiseNotificationEvent = nullptr;
--    PtrUiaClientsAreListening                  m_pUiaClientsAreListening = nullptr;
--};
--
--QT_END_NAMESPACE
--
--#endif //QWINDOWSUIAWRAPPER_H
--
-diff --git a/src/gui/accessible/windows/apisupport/uiaattributeids_p.h b/src/gui/accessible/windows/apisupport/uiaattributeids_p.h
-deleted file mode 100644
-index 2078351a98..0000000000
---- a/src/gui/accessible/windows/apisupport/uiaattributeids_p.h
-+++ /dev/null
-@@ -1,63 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAATTRIBUTEIDS_H
--#define UIAATTRIBUTEIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_AnimationStyleAttributeId            40000
--#define UIA_BackgroundColorAttributeId           40001
--#define UIA_BulletStyleAttributeId               40002
--#define UIA_CapStyleAttributeId                  40003
--#define UIA_CultureAttributeId                   40004
--#define UIA_FontNameAttributeId                  40005
--#define UIA_FontSizeAttributeId                  40006
--#define UIA_FontWeightAttributeId                40007
--#define UIA_ForegroundColorAttributeId           40008
--#define UIA_HorizontalTextAlignmentAttributeId   40009
--#define UIA_IndentationFirstLineAttributeId      40010
--#define UIA_IndentationLeadingAttributeId        40011
--#define UIA_IndentationTrailingAttributeId       40012
--#define UIA_IsHiddenAttributeId                  40013
--#define UIA_IsItalicAttributeId                  40014
--#define UIA_IsReadOnlyAttributeId                40015
--#define UIA_IsSubscriptAttributeId               40016
--#define UIA_IsSuperscriptAttributeId             40017
--#define UIA_MarginBottomAttributeId              40018
--#define UIA_MarginLeadingAttributeId             40019
--#define UIA_MarginTopAttributeId                 40020
--#define UIA_MarginTrailingAttributeId            40021
--#define UIA_OutlineStylesAttributeId             40022
--#define UIA_OverlineColorAttributeId             40023
--#define UIA_OverlineStyleAttributeId             40024
--#define UIA_StrikethroughColorAttributeId        40025
--#define UIA_StrikethroughStyleAttributeId        40026
--#define UIA_TabsAttributeId                      40027
--#define UIA_TextFlowDirectionsAttributeId        40028
--#define UIA_UnderlineColorAttributeId            40029
--#define UIA_UnderlineStyleAttributeId            40030
--#define UIA_AnnotationTypesAttributeId           40031
--#define UIA_AnnotationObjectsAttributeId         40032
--#define UIA_StyleNameAttributeId                 40033
--#define UIA_StyleIdAttributeId                   40034
--#define UIA_LinkAttributeId                      40035
--#define UIA_IsActiveAttributeId                  40036
--#define UIA_SelectionActiveEndAttributeId        40037
--#define UIA_CaretPositionAttributeId             40038
--#define UIA_CaretBidiModeAttributeId             40039
--#define UIA_LineSpacingAttributeId               40040
--#define UIA_BeforeParagraphSpacingAttributeId    40041
--#define UIA_AfterParagraphSpacingAttributeId     40042
--#define UIA_SayAsInterpretAsAttributeId          40043
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiaclientinterfaces_p.h b/src/gui/accessible/windows/apisupport/uiaclientinterfaces_p.h
-deleted file mode 100644
-index fb74042bfa..0000000000
---- a/src/gui/accessible/windows/apisupport/uiaclientinterfaces_p.h
-+++ /dev/null
-@@ -1,230 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIACLIENTINTERFACES_H
--#define UIACLIENTINTERFACES_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#include <unknwn.h>
--
--#ifndef __IUIAutomationElement_INTERFACE_DEFINED__
--
--struct IUIAutomationCondition;
--struct IUIAutomationCacheRequest;
--struct IUIAutomationElementArray;
--struct IUIAutomationTreeWalker;
--struct IUIAutomationEventHandler;
--struct IUIAutomationPropertyChangedEventHandler;
--struct IUIAutomationStructureChangedEventHandler;
--struct IUIAutomationFocusChangedEventHandler;
--struct IUIAutomationProxyFactory;
--struct IUIAutomationProxyFactoryEntry;
--struct IUIAutomationProxyFactoryMapping;
--#ifndef __IAccessible_FWD_DEFINED__
--#define __IAccessible_FWD_DEFINED__
--struct IAccessible;
--#endif   /* __IAccessible_FWD_DEFINED__ */
--
--#define __IUIAutomationElement_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IUIAutomationElement, 0xd22108aa, 0x8ac5, 0x49a5, 0x83,0x7b, 0x37,0xbb,0xb3,0xd7,0x59,0x1e);
--MIDL_INTERFACE("d22108aa-8ac5-49a5-837b-37bbb3d7591e")
--IUIAutomationElement : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE SetFocus() = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetRuntimeId(__RPC__deref_out_opt SAFEARRAY **runtimeId) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindFirst(enum TreeScope scope, __RPC__in_opt IUIAutomationCondition *condition, __RPC__deref_out_opt IUIAutomationElement **found) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindAll(enum TreeScope scope, __RPC__in_opt IUIAutomationCondition *condition, __RPC__deref_out_opt IUIAutomationElementArray **found) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindFirstBuildCache(enum TreeScope scope, __RPC__in_opt IUIAutomationCondition *condition, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **found) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindAllBuildCache(enum TreeScope scope, __RPC__in_opt IUIAutomationCondition *condition, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElementArray **found) = 0;
--    virtual HRESULT STDMETHODCALLTYPE BuildUpdatedCache(__RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **updatedElement) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCurrentPropertyValue(PROPERTYID propertyId, __RPC__out VARIANT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCurrentPropertyValueEx(PROPERTYID propertyId, BOOL ignoreDefaultValue, __RPC__out VARIANT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedPropertyValue(PROPERTYID propertyId, __RPC__out VARIANT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedPropertyValueEx(PROPERTYID propertyId, BOOL ignoreDefaultValue, __RPC__out VARIANT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCurrentPatternAs(PATTERNID patternId, __RPC__in REFIID riid, __RPC__deref_out_opt void **patternObject) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedPatternAs(PATTERNID patternId, __RPC__in REFIID riid, __RPC__deref_out_opt void **patternObject) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCurrentPattern(PATTERNID patternId, __RPC__deref_out_opt IUnknown **patternObject) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedPattern(PATTERNID patternId, __RPC__deref_out_opt IUnknown **patternObject) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedParent(__RPC__deref_out_opt IUIAutomationElement **parent) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCachedChildren(__RPC__deref_out_opt IUIAutomationElementArray **children) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentProcessId(__RPC__out int *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentControlType(__RPC__out CONTROLTYPEID *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentLocalizedControlType(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentName(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentAcceleratorKey(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentAccessKey(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentHasKeyboardFocus(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsKeyboardFocusable(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsEnabled(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentAutomationId(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentClassName(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentHelpText(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentCulture(__RPC__out int *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsControlElement(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsContentElement(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsPassword(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentNativeWindowHandle(__RPC__deref_out_opt UIA_HWND *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentItemType(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsOffscreen(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentOrientation(__RPC__out enum OrientationType *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentFrameworkId(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsRequiredForForm(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentItemStatus(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentBoundingRectangle(__RPC__out RECT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentLabeledBy(__RPC__deref_out_opt IUIAutomationElement **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentAriaRole(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentAriaProperties(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentIsDataValidForForm(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentControllerFor(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentDescribedBy(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentFlowsTo(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CurrentProviderDescription(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedProcessId(__RPC__out int *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedControlType(__RPC__out CONTROLTYPEID *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedLocalizedControlType(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedName(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedAcceleratorKey(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedAccessKey(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedHasKeyboardFocus(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsKeyboardFocusable(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsEnabled(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedAutomationId(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedClassName(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedHelpText(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedCulture(__RPC__out int *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsControlElement(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsContentElement(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsPassword(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedNativeWindowHandle(__RPC__deref_out_opt UIA_HWND *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedItemType(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsOffscreen(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedOrientation(__RPC__out enum OrientationType *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedFrameworkId(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsRequiredForForm(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedItemStatus(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedBoundingRectangle(__RPC__out RECT *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedLabeledBy(__RPC__deref_out_opt IUIAutomationElement **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedAriaRole(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedAriaProperties(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedIsDataValidForForm(__RPC__out BOOL *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedControllerFor(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedDescribedBy(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedFlowsTo(__RPC__deref_out_opt IUIAutomationElementArray **retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CachedProviderDescription(__RPC__deref_out_opt BSTR *retVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetClickablePoint(__RPC__out POINT *clickable, __RPC__out BOOL *gotClickable) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IUIAutomationElement, 0xd22108aa, 0x8ac5, 0x49a5, 0x83,0x7b, 0x37,0xbb,0xb3,0xd7,0x59,0x1e)
--#endif
--#endif
--
--
--#ifndef __IUIAutomation_INTERFACE_DEFINED__
--#define __IUIAutomation_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IUIAutomation, 0x30cbe57d, 0xd9d0, 0x452a, 0xab,0x13, 0x7a,0xc5,0xac,0x48,0x25,0xee);
--MIDL_INTERFACE("30cbe57d-d9d0-452a-ab13-7ac5ac4825ee")
--IUIAutomation : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE CompareElements(__RPC__in_opt IUIAutomationElement *el1, __RPC__in_opt IUIAutomationElement *el2, __RPC__out BOOL *areSame) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CompareRuntimeIds(__RPC__in SAFEARRAY * runtimeId1, __RPC__in SAFEARRAY * runtimeId2, __RPC__out BOOL *areSame) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetRootElement(__RPC__deref_out_opt IUIAutomationElement **root) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromHandle(__RPC__in UIA_HWND hwnd, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromPoint(POINT pt, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetFocusedElement(__RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetRootElementBuildCache(__RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **root) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromHandleBuildCache(__RPC__in UIA_HWND hwnd, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromPointBuildCache(POINT pt, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetFocusedElementBuildCache(__RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateTreeWalker(__RPC__in_opt IUIAutomationCondition *pCondition, __RPC__deref_out_opt IUIAutomationTreeWalker **walker) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ControlViewWalker(__RPC__deref_out_opt IUIAutomationTreeWalker **walker) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ContentViewWalker(__RPC__deref_out_opt IUIAutomationTreeWalker **walker) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_RawViewWalker(__RPC__deref_out_opt IUIAutomationTreeWalker **walker) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_RawViewCondition(__RPC__deref_out_opt IUIAutomationCondition **condition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ControlViewCondition(__RPC__deref_out_opt IUIAutomationCondition **condition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ContentViewCondition(__RPC__deref_out_opt IUIAutomationCondition **condition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateCacheRequest(__RPC__deref_out_opt IUIAutomationCacheRequest **cacheRequest) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateTrueCondition(__RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateFalseCondition(__RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreatePropertyCondition(PROPERTYID propertyId, VARIANT value, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreatePropertyConditionEx(PROPERTYID propertyId, VARIANT value, enum PropertyConditionFlags flags, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateAndCondition(__RPC__in_opt IUIAutomationCondition *condition1, __RPC__in_opt IUIAutomationCondition *condition2, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateAndConditionFromArray(__RPC__in_opt SAFEARRAY * conditions, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateAndConditionFromNativeArray(__RPC__in_ecount_full(conditionCount) IUIAutomationCondition **conditions, int conditionCount, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateOrCondition(__RPC__in_opt IUIAutomationCondition *condition1, __RPC__in_opt IUIAutomationCondition *condition2, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateOrConditionFromArray(__RPC__in_opt SAFEARRAY * conditions, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateOrConditionFromNativeArray(__RPC__in_ecount_full(conditionCount) IUIAutomationCondition **conditions, int conditionCount, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateNotCondition(__RPC__in_opt IUIAutomationCondition *condition, __RPC__deref_out_opt IUIAutomationCondition **newCondition) = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddAutomationEventHandler(EVENTID eventId, __RPC__in_opt IUIAutomationElement *element, enum TreeScope scope, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__in_opt IUIAutomationEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveAutomationEventHandler(EVENTID eventId, __RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddPropertyChangedEventHandlerNativeArray(__RPC__in_opt IUIAutomationElement *element, enum TreeScope scope, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__in_opt IUIAutomationPropertyChangedEventHandler *handler, __RPC__in_ecount_full(propertyCount) PROPERTYID *propertyArray, int propertyCount) = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddPropertyChangedEventHandler(__RPC__in_opt IUIAutomationElement *element, enum TreeScope scope, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__in_opt IUIAutomationPropertyChangedEventHandler *handler, __RPC__in SAFEARRAY * propertyArray) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemovePropertyChangedEventHandler(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationPropertyChangedEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddStructureChangedEventHandler(__RPC__in_opt IUIAutomationElement *element, enum TreeScope scope, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__in_opt IUIAutomationStructureChangedEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveStructureChangedEventHandler(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationStructureChangedEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddFocusChangedEventHandler(__RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__in_opt IUIAutomationFocusChangedEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveFocusChangedEventHandler(__RPC__in_opt IUIAutomationFocusChangedEventHandler *handler) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveAllEventHandlers() = 0;
--    virtual HRESULT STDMETHODCALLTYPE IntNativeArrayToSafeArray(__RPC__in_ecount_full(arrayCount) int *array, int arrayCount, __RPC__deref_out_opt SAFEARRAY **safeArray) = 0;
--    virtual HRESULT STDMETHODCALLTYPE IntSafeArrayToNativeArray(__RPC__in SAFEARRAY * intArray, __RPC__deref_out_ecount_full_opt(*arrayCount) int **array, __RPC__out int *arrayCount) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RectToVariant(RECT rc, __RPC__out VARIANT *var) = 0;
--    virtual HRESULT STDMETHODCALLTYPE VariantToRect(VARIANT var, __RPC__out RECT *rc) = 0;
--    virtual HRESULT STDMETHODCALLTYPE SafeArrayToRectNativeArray(__RPC__in SAFEARRAY * rects, __RPC__deref_out_ecount_full_opt(*rectArrayCount) RECT **rectArray, __RPC__out int *rectArrayCount) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CreateProxyFactoryEntry(__RPC__in_opt IUIAutomationProxyFactory *factory, __RPC__deref_out_opt IUIAutomationProxyFactoryEntry **factoryEntry) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ProxyFactoryMapping(__RPC__deref_out_opt IUIAutomationProxyFactoryMapping **factoryMapping) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPropertyProgrammaticName(PROPERTYID property, __RPC__deref_out_opt BSTR *name) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPatternProgrammaticName(PATTERNID pattern, __RPC__deref_out_opt BSTR *name) = 0;
--    virtual HRESULT STDMETHODCALLTYPE PollForPotentialSupportedPatterns(__RPC__in_opt IUIAutomationElement *pElement, __RPC__deref_out_opt SAFEARRAY **patternIds, __RPC__deref_out_opt SAFEARRAY **patternNames) = 0;
--    virtual HRESULT STDMETHODCALLTYPE PollForPotentialSupportedProperties(__RPC__in_opt IUIAutomationElement *pElement, __RPC__deref_out_opt SAFEARRAY **propertyIds, __RPC__deref_out_opt SAFEARRAY **propertyNames) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CheckNotSupported(VARIANT value, __RPC__out BOOL *isNotSupported) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ReservedNotSupportedValue(__RPC__deref_out_opt IUnknown **notSupportedValue) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ReservedMixedAttributeValue(__RPC__deref_out_opt IUnknown **mixedAttributeValue) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromIAccessible(__RPC__in_opt IAccessible *accessible, int childId, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ElementFromIAccessibleBuildCache(__RPC__in_opt IAccessible *accessible, int childId, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **element) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IUIAutomation, 0x30cbe57d, 0xd9d0, 0x452a, 0xab,0x13, 0x7a,0xc5,0xac,0x48,0x25,0xee)
--#endif
--#endif
--
--
--#ifndef __IUIAutomationTreeWalker_INTERFACE_DEFINED__
--#define __IUIAutomationTreeWalker_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IUIAutomationTreeWalker, 0x4042c624, 0x389c, 0x4afc, 0xa6,0x30, 0x9d,0xf8,0x54,0xa5,0x41,0xfc);
--MIDL_INTERFACE("4042c624-389c-4afc-a630-9df854a541fc")
--IUIAutomationTreeWalker : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetParentElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **parent) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetFirstChildElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **first) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetLastChildElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **last) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetNextSiblingElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **next) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPreviousSiblingElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **previous) = 0;
--    virtual HRESULT STDMETHODCALLTYPE NormalizeElement(__RPC__in_opt IUIAutomationElement *element, __RPC__deref_out_opt IUIAutomationElement **normalized) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetParentElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **parent) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetFirstChildElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **first) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetLastChildElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **last) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetNextSiblingElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **next) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPreviousSiblingElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **previous) = 0;
--    virtual HRESULT STDMETHODCALLTYPE NormalizeElementBuildCache(__RPC__in_opt IUIAutomationElement *element, __RPC__in_opt IUIAutomationCacheRequest *cacheRequest, __RPC__deref_out_opt IUIAutomationElement **normalized) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Condition(__RPC__deref_out_opt IUIAutomationCondition **condition) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IUIAutomationTreeWalker, 0x4042c624, 0x389c, 0x4afc, 0xa6,0x30, 0x9d,0xf8,0x54,0xa5,0x41,0xfc)
--#endif
--#endif
--
--DEFINE_GUID(CLSID_CUIAutomation, 0xff48dba4, 0x60ef, 0x4201, 0xaa,0x87, 0x54,0x10,0x3e,0xef,0x59,0x4e);
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiacontroltypeids_p.h b/src/gui/accessible/windows/apisupport/uiacontroltypeids_p.h
-deleted file mode 100644
-index 21d8080bc2..0000000000
---- a/src/gui/accessible/windows/apisupport/uiacontroltypeids_p.h
-+++ /dev/null
-@@ -1,60 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIACONTROLTYPEIDS_H
--#define UIACONTROLTYPEIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_ButtonControlTypeId         50000
--#define UIA_CalendarControlTypeId       50001
--#define UIA_CheckBoxControlTypeId       50002
--#define UIA_ComboBoxControlTypeId       50003
--#define UIA_EditControlTypeId           50004
--#define UIA_HyperlinkControlTypeId      50005
--#define UIA_ImageControlTypeId          50006
--#define UIA_ListItemControlTypeId       50007
--#define UIA_ListControlTypeId           50008
--#define UIA_MenuControlTypeId           50009
--#define UIA_MenuBarControlTypeId        50010
--#define UIA_MenuItemControlTypeId       50011
--#define UIA_ProgressBarControlTypeId    50012
--#define UIA_RadioButtonControlTypeId    50013
--#define UIA_ScrollBarControlTypeId      50014
--#define UIA_SliderControlTypeId         50015
--#define UIA_SpinnerControlTypeId        50016
--#define UIA_StatusBarControlTypeId      50017
--#define UIA_TabControlTypeId            50018
--#define UIA_TabItemControlTypeId        50019
--#define UIA_TextControlTypeId           50020
--#define UIA_ToolBarControlTypeId        50021
--#define UIA_ToolTipControlTypeId        50022
--#define UIA_TreeControlTypeId           50023
--#define UIA_TreeItemControlTypeId       50024
--#define UIA_CustomControlTypeId         50025
--#define UIA_GroupControlTypeId          50026
--#define UIA_ThumbControlTypeId          50027
--#define UIA_DataGridControlTypeId       50028
--#define UIA_DataItemControlTypeId       50029
--#define UIA_DocumentControlTypeId       50030
--#define UIA_SplitButtonControlTypeId    50031
--#define UIA_WindowControlTypeId         50032
--#define UIA_PaneControlTypeId           50033
--#define UIA_HeaderControlTypeId         50034
--#define UIA_HeaderItemControlTypeId     50035
--#define UIA_TableControlTypeId          50036
--#define UIA_TitleBarControlTypeId       50037
--#define UIA_SeparatorControlTypeId      50038
--#define UIA_SemanticZoomControlTypeId   50039
--#define UIA_AppBarControlTypeId         50040
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiaerrorids_p.h b/src/gui/accessible/windows/apisupport/uiaerrorids_p.h
-deleted file mode 100644
-index b965fe5c30..0000000000
---- a/src/gui/accessible/windows/apisupport/uiaerrorids_p.h
-+++ /dev/null
-@@ -1,26 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAERRORIDS_H
--#define UIAERRORIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_E_ELEMENTNOTENABLED      0x80040200
--#define UIA_E_ELEMENTNOTAVAILABLE    0x80040201
--#define UIA_E_NOCLICKABLEPOINT       0x80040202
--#define UIA_E_PROXYASSEMBLYNOTLOADED 0x80040203
--#define UIA_E_NOTSUPPORTED           0x80040204
--#define UIA_E_INVALIDOPERATION       0x80131509
--#define UIA_E_TIMEOUT                0x80131505
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiaeventids_p.h b/src/gui/accessible/windows/apisupport/uiaeventids_p.h
-deleted file mode 100644
-index 7ac6d85ec5..0000000000
---- a/src/gui/accessible/windows/apisupport/uiaeventids_p.h
-+++ /dev/null
-@@ -1,54 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAEVENTIDS_H
--#define UIAEVENTIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_ToolTipOpenedEventId                                20000
--#define UIA_ToolTipClosedEventId                                20001
--#define UIA_StructureChangedEventId                             20002
--#define UIA_MenuOpenedEventId                                   20003
--#define UIA_AutomationPropertyChangedEventId                    20004
--#define UIA_AutomationFocusChangedEventId                       20005
--#define UIA_AsyncContentLoadedEventId                           20006
--#define UIA_MenuClosedEventId                                   20007
--#define UIA_LayoutInvalidatedEventId                            20008
--#define UIA_Invoke_InvokedEventId                               20009
--#define UIA_SelectionItem_ElementAddedToSelectionEventId        20010
--#define UIA_SelectionItem_ElementRemovedFromSelectionEventId    20011
--#define UIA_SelectionItem_ElementSelectedEventId                20012
--#define UIA_Selection_InvalidatedEventId                        20013
--#define UIA_Text_TextSelectionChangedEventId                    20014
--#define UIA_Text_TextChangedEventId                             20015
--#define UIA_Window_WindowOpenedEventId                          20016
--#define UIA_Window_WindowClosedEventId                          20017
--#define UIA_MenuModeStartEventId                                20018
--#define UIA_MenuModeEndEventId                                  20019
--#define UIA_InputReachedTargetEventId                           20020
--#define UIA_InputReachedOtherElementEventId                     20021
--#define UIA_InputDiscardedEventId                               20022
--#define UIA_SystemAlertEventId                                  20023
--#define UIA_LiveRegionChangedEventId                            20024
--#define UIA_HostedFragmentRootsInvalidatedEventId               20025
--#define UIA_Drag_DragStartEventId                               20026
--#define UIA_Drag_DragCancelEventId                              20027
--#define UIA_Drag_DragCompleteEventId                            20028
--#define UIA_DropTarget_DragEnterEventId                         20029
--#define UIA_DropTarget_DragLeaveEventId                         20030
--#define UIA_DropTarget_DroppedEventId                           20031
--#define UIA_TextEdit_TextChangedEventId                         20032
--#define UIA_TextEdit_ConversionTargetChangedEventId             20033
--#define UIA_ChangesEventId                                      20034
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiageneralids_p.h b/src/gui/accessible/windows/apisupport/uiageneralids_p.h
-deleted file mode 100644
-index a6fdeceee3..0000000000
---- a/src/gui/accessible/windows/apisupport/uiageneralids_p.h
-+++ /dev/null
-@@ -1,21 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAGENERALIDS_H
--#define UIAGENERALIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UiaAppendRuntimeId       3
--#define UiaRootObjectId        -25
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiapatternids_p.h b/src/gui/accessible/windows/apisupport/uiapatternids_p.h
-deleted file mode 100644
-index 0ff463cd36..0000000000
---- a/src/gui/accessible/windows/apisupport/uiapatternids_p.h
-+++ /dev/null
-@@ -1,53 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAPATTERNIDS_H
--#define UIAPATTERNIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_InvokePatternId             10000
--#define UIA_SelectionPatternId          10001
--#define UIA_ValuePatternId              10002
--#define UIA_RangeValuePatternId         10003
--#define UIA_ScrollPatternId             10004
--#define UIA_ExpandCollapsePatternId     10005
--#define UIA_GridPatternId               10006
--#define UIA_GridItemPatternId           10007
--#define UIA_MultipleViewPatternId       10008
--#define UIA_WindowPatternId             10009
--#define UIA_SelectionItemPatternId      10010
--#define UIA_DockPatternId               10011
--#define UIA_TablePatternId              10012
--#define UIA_TableItemPatternId          10013
--#define UIA_TextPatternId               10014
--#define UIA_TogglePatternId             10015
--#define UIA_TransformPatternId          10016
--#define UIA_ScrollItemPatternId         10017
--#define UIA_LegacyIAccessiblePatternId  10018
--#define UIA_ItemContainerPatternId      10019
--#define UIA_VirtualizedItemPatternId    10020
--#define UIA_SynchronizedInputPatternId  10021
--#define UIA_ObjectModelPatternId        10022
--#define UIA_AnnotationPatternId         10023
--#define UIA_TextPattern2Id              10024
--#define UIA_StylesPatternId             10025
--#define UIA_SpreadsheetPatternId        10026
--#define UIA_SpreadsheetItemPatternId    10027
--#define UIA_TransformPattern2Id         10028
--#define UIA_TextChildPatternId          10029
--#define UIA_DragPatternId               10030
--#define UIA_DropTargetPatternId         10031
--#define UIA_TextEditPatternId           10032
--#define UIA_CustomNavigationPatternId   10033
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiapropertyids_p.h b/src/gui/accessible/windows/apisupport/uiapropertyids_p.h
-deleted file mode 100644
-index 77fc454e0f..0000000000
---- a/src/gui/accessible/windows/apisupport/uiapropertyids_p.h
-+++ /dev/null
-@@ -1,188 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIAPROPERTYIDS_H
--#define UIAPROPERTYIDS_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#define UIA_RuntimeIdPropertyId                                30000
--#define UIA_BoundingRectanglePropertyId                        30001
--#define UIA_ProcessIdPropertyId                                30002
--#define UIA_ControlTypePropertyId                              30003
--#define UIA_LocalizedControlTypePropertyId                     30004
--#define UIA_NamePropertyId                                     30005
--#define UIA_AcceleratorKeyPropertyId                           30006
--#define UIA_AccessKeyPropertyId                                30007
--#define UIA_HasKeyboardFocusPropertyId                         30008
--#define UIA_IsKeyboardFocusablePropertyId                      30009
--#define UIA_IsEnabledPropertyId                                30010
--#define UIA_AutomationIdPropertyId                             30011
--#define UIA_ClassNamePropertyId                                30012
--#define UIA_HelpTextPropertyId                                 30013
--#define UIA_ClickablePointPropertyId                           30014
--#define UIA_CulturePropertyId                                  30015
--#define UIA_IsControlElementPropertyId                         30016
--#define UIA_IsContentElementPropertyId                         30017
--#define UIA_LabeledByPropertyId                                30018
--#define UIA_IsPasswordPropertyId                               30019
--#define UIA_NativeWindowHandlePropertyId                       30020
--#define UIA_ItemTypePropertyId                                 30021
--#define UIA_IsOffscreenPropertyId                              30022
--#define UIA_OrientationPropertyId                              30023
--#define UIA_FrameworkIdPropertyId                              30024
--#define UIA_IsRequiredForFormPropertyId                        30025
--#define UIA_ItemStatusPropertyId                               30026
--#define UIA_IsDockPatternAvailablePropertyId                   30027
--#define UIA_IsExpandCollapsePatternAvailablePropertyId         30028
--#define UIA_IsGridItemPatternAvailablePropertyId               30029
--#define UIA_IsGridPatternAvailablePropertyId                   30030
--#define UIA_IsInvokePatternAvailablePropertyId                 30031
--#define UIA_IsMultipleViewPatternAvailablePropertyId           30032
--#define UIA_IsRangeValuePatternAvailablePropertyId             30033
--#define UIA_IsScrollPatternAvailablePropertyId                 30034
--#define UIA_IsScrollItemPatternAvailablePropertyId             30035
--#define UIA_IsSelectionItemPatternAvailablePropertyId          30036
--#define UIA_IsSelectionPatternAvailablePropertyId              30037
--#define UIA_IsTablePatternAvailablePropertyId                  30038
--#define UIA_IsTableItemPatternAvailablePropertyId              30039
--#define UIA_IsTextPatternAvailablePropertyId                   30040
--#define UIA_IsTogglePatternAvailablePropertyId                 30041
--#define UIA_IsTransformPatternAvailablePropertyId              30042
--#define UIA_IsValuePatternAvailablePropertyId                  30043
--#define UIA_IsWindowPatternAvailablePropertyId                 30044
--#define UIA_ValueValuePropertyId                               30045
--#define UIA_ValueIsReadOnlyPropertyId                          30046
--#define UIA_RangeValueValuePropertyId                          30047
--#define UIA_RangeValueIsReadOnlyPropertyId                     30048
--#define UIA_RangeValueMinimumPropertyId                        30049
--#define UIA_RangeValueMaximumPropertyId                        30050
--#define UIA_RangeValueLargeChangePropertyId                    30051
--#define UIA_RangeValueSmallChangePropertyId                    30052
--#define UIA_ScrollHorizontalScrollPercentPropertyId            30053
--#define UIA_ScrollHorizontalViewSizePropertyId                 30054
--#define UIA_ScrollVerticalScrollPercentPropertyId              30055
--#define UIA_ScrollVerticalViewSizePropertyId                   30056
--#define UIA_ScrollHorizontallyScrollablePropertyId             30057
--#define UIA_ScrollVerticallyScrollablePropertyId               30058
--#define UIA_SelectionSelectionPropertyId                       30059
--#define UIA_SelectionCanSelectMultiplePropertyId               30060
--#define UIA_SelectionIsSelectionRequiredPropertyId             30061
--#define UIA_GridRowCountPropertyId                             30062
--#define UIA_GridColumnCountPropertyId                          30063
--#define UIA_GridItemRowPropertyId                              30064
--#define UIA_GridItemColumnPropertyId                           30065
--#define UIA_GridItemRowSpanPropertyId                          30066
--#define UIA_GridItemColumnSpanPropertyId                       30067
--#define UIA_GridItemContainingGridPropertyId                   30068
--#define UIA_DockDockPositionPropertyId                         30069
--#define UIA_ExpandCollapseExpandCollapseStatePropertyId        30070
--#define UIA_MultipleViewCurrentViewPropertyId                  30071
--#define UIA_MultipleViewSupportedViewsPropertyId               30072
--#define UIA_WindowCanMaximizePropertyId                        30073
--#define UIA_WindowCanMinimizePropertyId                        30074
--#define UIA_WindowWindowVisualStatePropertyId                  30075
--#define UIA_WindowWindowInteractionStatePropertyId             30076
--#define UIA_WindowIsModalPropertyId                            30077
--#define UIA_WindowIsTopmostPropertyId                          30078
--#define UIA_SelectionItemIsSelectedPropertyId                  30079
--#define UIA_SelectionItemSelectionContainerPropertyId          30080
--#define UIA_TableRowHeadersPropertyId                          30081
--#define UIA_TableColumnHeadersPropertyId                       30082
--#define UIA_TableRowOrColumnMajorPropertyId                    30083
--#define UIA_TableItemRowHeaderItemsPropertyId                  30084
--#define UIA_TableItemColumnHeaderItemsPropertyId               30085
--#define UIA_ToggleToggleStatePropertyId                        30086
--#define UIA_TransformCanMovePropertyId                         30087
--#define UIA_TransformCanResizePropertyId                       30088
--#define UIA_TransformCanRotatePropertyId                       30089
--#define UIA_IsLegacyIAccessiblePatternAvailablePropertyId      30090
--#define UIA_LegacyIAccessibleChildIdPropertyId                 30091
--#define UIA_LegacyIAccessibleNamePropertyId                    30092
--#define UIA_LegacyIAccessibleValuePropertyId                   30093
--#define UIA_LegacyIAccessibleDescriptionPropertyId             30094
--#define UIA_LegacyIAccessibleRolePropertyId                    30095
--#define UIA_LegacyIAccessibleStatePropertyId                   30096
--#define UIA_LegacyIAccessibleHelpPropertyId                    30097
--#define UIA_LegacyIAccessibleKeyboardShortcutPropertyId        30098
--#define UIA_LegacyIAccessibleSelectionPropertyId               30099
--#define UIA_LegacyIAccessibleDefaultActionPropertyId           30100
--#define UIA_AriaRolePropertyId                                 30101
--#define UIA_AriaPropertiesPropertyId                           30102
--#define UIA_IsDataValidForFormPropertyId                       30103
--#define UIA_ControllerForPropertyId                            30104
--#define UIA_DescribedByPropertyId                              30105
--#define UIA_FlowsToPropertyId                                  30106
--#define UIA_ProviderDescriptionPropertyId                      30107
--#define UIA_IsItemContainerPatternAvailablePropertyId          30108
--#define UIA_IsVirtualizedItemPatternAvailablePropertyId        30109
--#define UIA_IsSynchronizedInputPatternAvailablePropertyId      30110
--#define UIA_OptimizeForVisualContentPropertyId                 30111
--#define UIA_IsObjectModelPatternAvailablePropertyId            30112
--#define UIA_AnnotationAnnotationTypeIdPropertyId               30113
--#define UIA_AnnotationAnnotationTypeNamePropertyId             30114
--#define UIA_AnnotationAuthorPropertyId                         30115
--#define UIA_AnnotationDateTimePropertyId                       30116
--#define UIA_AnnotationTargetPropertyId                         30117
--#define UIA_IsAnnotationPatternAvailablePropertyId             30118
--#define UIA_IsTextPattern2AvailablePropertyId                  30119
--#define UIA_StylesStyleIdPropertyId                            30120
--#define UIA_StylesStyleNamePropertyId                          30121
--#define UIA_StylesFillColorPropertyId                          30122
--#define UIA_StylesFillPatternStylePropertyId                   30123
--#define UIA_StylesShapePropertyId                              30124
--#define UIA_StylesFillPatternColorPropertyId                   30125
--#define UIA_StylesExtendedPropertiesPropertyId                 30126
--#define UIA_IsStylesPatternAvailablePropertyId                 30127
--#define UIA_IsSpreadsheetPatternAvailablePropertyId            30128
--#define UIA_SpreadsheetItemFormulaPropertyId                   30129
--#define UIA_SpreadsheetItemAnnotationObjectsPropertyId         30130
--#define UIA_SpreadsheetItemAnnotationTypesPropertyId           30131
--#define UIA_IsSpreadsheetItemPatternAvailablePropertyId        30132
--#define UIA_Transform2CanZoomPropertyId                        30133
--#define UIA_IsTransformPattern2AvailablePropertyId             30134
--#define UIA_LiveSettingPropertyId                              30135
--#define UIA_IsTextChildPatternAvailablePropertyId              30136
--#define UIA_IsDragPatternAvailablePropertyId                   30137
--#define UIA_DragIsGrabbedPropertyId                            30138
--#define UIA_DragDropEffectPropertyId                           30139
--#define UIA_DragDropEffectsPropertyId                          30140
--#define UIA_IsDropTargetPatternAvailablePropertyId             30141
--#define UIA_DropTargetDropTargetEffectPropertyId               30142
--#define UIA_DropTargetDropTargetEffectsPropertyId              30143
--#define UIA_DragGrabbedItemsPropertyId                         30144
--#define UIA_Transform2ZoomLevelPropertyId                      30145
--#define UIA_Transform2ZoomMinimumPropertyId                    30146
--#define UIA_Transform2ZoomMaximumPropertyId                    30147
--#define UIA_FlowsFromPropertyId                                30148
--#define UIA_IsTextEditPatternAvailablePropertyId               30149
--#define UIA_IsPeripheralPropertyId                             30150
--#define UIA_IsCustomNavigationPatternAvailablePropertyId       30151
--#define UIA_PositionInSetPropertyId                            30152
--#define UIA_SizeOfSetPropertyId                                30153
--#define UIA_LevelPropertyId                                    30154
--#define UIA_AnnotationTypesPropertyId                          30155
--#define UIA_AnnotationObjectsPropertyId                        30156
--#define UIA_LandmarkTypePropertyId                             30157
--#define UIA_LocalizedLandmarkTypePropertyId                    30158
--#define UIA_FullDescriptionPropertyId                          30159
--#define UIA_FillColorPropertyId                                30160
--#define UIA_OutlineColorPropertyId                             30161
--#define UIA_FillTypePropertyId                                 30162
--#define UIA_VisualEffectsPropertyId                            30163
--#define UIA_OutlineThicknessPropertyId                         30164
--#define UIA_CenterPointPropertyId                              30165
--#define UIA_RotationPropertyId                                 30166
--#define UIA_SizePropertyId                                     30167
--#define UIA_IsDialogPropertyId                                 30174
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiaserverinterfaces_p.h b/src/gui/accessible/windows/apisupport/uiaserverinterfaces_p.h
-deleted file mode 100644
-index 6cf15cacb0..0000000000
---- a/src/gui/accessible/windows/apisupport/uiaserverinterfaces_p.h
-+++ /dev/null
-@@ -1,367 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIASERVERINTERFACES_H
--#define UIASERVERINTERFACES_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--#include <unknwn.h>
--
--#ifndef __IRawElementProviderSimple_INTERFACE_DEFINED__
--#define __IRawElementProviderSimple_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IRawElementProviderSimple, 0xd6dd68d1, 0x86fd, 0x4332, 0x86,0x66, 0x9a,0xbe,0xde,0xa2,0xd2,0x4c);
--MIDL_INTERFACE("d6dd68d1-86fd-4332-8666-9abedea2d24c")
--IRawElementProviderSimple : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE get_ProviderOptions(__RPC__out enum ProviderOptions *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPatternProvider(PATTERNID patternId, __RPC__deref_out_opt IUnknown **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetPropertyValue(PROPERTYID propertyId, __RPC__out VARIANT *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_HostRawElementProvider(__RPC__deref_out_opt IRawElementProviderSimple **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IRawElementProviderSimple, 0xd6dd68d1, 0x86fd, 0x4332, 0x86,0x66, 0x9a,0xbe,0xde,0xa2,0xd2,0x4c)
--#endif
--#endif
--
--
--#ifndef __IRawElementProviderFragmentRoot_FWD_DEFINED__
--#define __IRawElementProviderFragmentRoot_FWD_DEFINED__
--typedef interface IRawElementProviderFragmentRoot IRawElementProviderFragmentRoot;
--#endif
--
--
--#ifndef __IRawElementProviderFragment_FWD_DEFINED__
--#define __IRawElementProviderFragment_FWD_DEFINED__
--typedef interface IRawElementProviderFragment IRawElementProviderFragment;
--#endif
--
--
--#ifndef __IRawElementProviderFragment_INTERFACE_DEFINED__
--#define __IRawElementProviderFragment_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IRawElementProviderFragment, 0xf7063da8, 0x8359, 0x439c, 0x92,0x97, 0xbb,0xc5,0x29,0x9a,0x7d,0x87);
--MIDL_INTERFACE("f7063da8-8359-439c-9297-bbc5299a7d87")
--IRawElementProviderFragment : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Navigate(enum NavigateDirection direction, __RPC__deref_out_opt IRawElementProviderFragment **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetRuntimeId(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_BoundingRectangle(__RPC__out struct UiaRect *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetEmbeddedFragmentRoots(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE SetFocus() = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_FragmentRoot(__RPC__deref_out_opt IRawElementProviderFragmentRoot **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IRawElementProviderFragment, 0xf7063da8, 0x8359, 0x439c, 0x92,0x97, 0xbb,0xc5,0x29,0x9a,0x7d,0x87)
--#endif
--#endif
--
--
--#ifndef __IRawElementProviderFragmentRoot_INTERFACE_DEFINED__
--#define __IRawElementProviderFragmentRoot_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IRawElementProviderFragmentRoot, 0x620ce2a5, 0xab8f, 0x40a9, 0x86,0xcb, 0xde,0x3c,0x75,0x59,0x9b,0x58);
--MIDL_INTERFACE("620ce2a5-ab8f-40a9-86cb-de3c75599b58")
--IRawElementProviderFragmentRoot : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE ElementProviderFromPoint(double x, double y, __RPC__deref_out_opt IRawElementProviderFragment **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetFocus(__RPC__deref_out_opt IRawElementProviderFragment **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IRawElementProviderFragmentRoot, 0x620ce2a5, 0xab8f, 0x40a9, 0x86,0xcb, 0xde,0x3c,0x75,0x59,0x9b,0x58)
--#endif
--#endif
--
--
--#ifndef __IValueProvider_INTERFACE_DEFINED__
--#define __IValueProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IValueProvider, 0xc7935180, 0x6fb3, 0x4201, 0xb1,0x74, 0x7d,0xf7,0x3a,0xdb,0xf6,0x4a);
--MIDL_INTERFACE("c7935180-6fb3-4201-b174-7df73adbf64a")
--IValueProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE SetValue(__RPC__in LPCWSTR val) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Value(__RPC__deref_out_opt BSTR *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsReadOnly(__RPC__out BOOL *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IValueProvider, 0xc7935180, 0x6fb3, 0x4201, 0xb1,0x74, 0x7d,0xf7,0x3a,0xdb,0xf6,0x4a)
--#endif
--#endif
--
--
--#ifndef __IRangeValueProvider_INTERFACE_DEFINED__
--#define __IRangeValueProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IRangeValueProvider, 0x36dc7aef, 0x33e6, 0x4691, 0xaf,0xe1, 0x2b,0xe7,0x27,0x4b,0x3d,0x33);
--MIDL_INTERFACE("36dc7aef-33e6-4691-afe1-2be7274b3d33")
--IRangeValueProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE SetValue(double val) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Value(__RPC__out double *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsReadOnly(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Maximum(__RPC__out double *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Minimum(__RPC__out double *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_LargeChange(__RPC__out double *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_SmallChange(__RPC__out double *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IRangeValueProvider, 0x36dc7aef, 0x33e6, 0x4691, 0xaf,0xe1, 0x2b,0xe7,0x27,0x4b,0x3d,0x33)
--#endif
--#endif
--
--
--#ifndef __ITextRangeProvider_INTERFACE_DEFINED__
--#define __ITextRangeProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ITextRangeProvider, 0x5347ad7b, 0xc355, 0x46f8, 0xaf,0xf5, 0x90,0x90,0x33,0x58,0x2f,0x63);
--MIDL_INTERFACE("5347ad7b-c355-46f8-aff5-909033582f63")
--ITextRangeProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Clone(__RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE Compare(__RPC__in_opt ITextRangeProvider *range, __RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE CompareEndpoints(enum TextPatternRangeEndpoint endpoint, __RPC__in_opt ITextRangeProvider *targetRange, enum TextPatternRangeEndpoint targetEndpoint, __RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE ExpandToEnclosingUnit(enum TextUnit unit) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindAttribute(TEXTATTRIBUTEID attributeId, VARIANT val, BOOL backward, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE FindText(__RPC__in BSTR text, BOOL backward, BOOL ignoreCase, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetAttributeValue(TEXTATTRIBUTEID attributeId, __RPC__out VARIANT *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetBoundingRectangles(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetEnclosingElement(__RPC__deref_out_opt IRawElementProviderSimple **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetText(int maxLength, __RPC__deref_out_opt BSTR *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE Move(enum TextUnit unit, int count, __RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE MoveEndpointByUnit(enum TextPatternRangeEndpoint endpoint, enum TextUnit unit, int count, __RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE MoveEndpointByRange(enum TextPatternRangeEndpoint endpoint, __RPC__in_opt ITextRangeProvider *targetRange, enum TextPatternRangeEndpoint targetEndpoint) = 0;
--    virtual HRESULT STDMETHODCALLTYPE Select() = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddToSelection() = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveFromSelection() = 0;
--    virtual HRESULT STDMETHODCALLTYPE ScrollIntoView(BOOL alignToTop) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetChildren(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ITextRangeProvider, 0x5347ad7b, 0xc355, 0x46f8, 0xaf,0xf5, 0x90,0x90,0x33,0x58,0x2f,0x63)
--#endif
--#endif
--
--
--#ifndef __ITextProvider_INTERFACE_DEFINED__
--#define __ITextProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ITextProvider, 0x3589c92c, 0x63f3, 0x4367, 0x99,0xbb, 0xad,0xa6,0x53,0xb7,0x7c,0xf2);
--MIDL_INTERFACE("3589c92c-63f3-4367-99bb-ada653b77cf2")
--ITextProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetSelection(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetVisibleRanges(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RangeFromChild(__RPC__in_opt IRawElementProviderSimple *childElement, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE RangeFromPoint(struct UiaPoint point, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_DocumentRange(__RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_SupportedTextSelection(__RPC__out enum SupportedTextSelection *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ITextProvider, 0x3589c92c, 0x63f3, 0x4367, 0x99,0xbb, 0xad,0xa6,0x53,0xb7,0x7c,0xf2)
--#endif
--#endif
--
--
--#ifndef __ITextProvider2_INTERFACE_DEFINED__
--#define __ITextProvider2_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ITextProvider2, 0x0dc5e6ed, 0x3e16, 0x4bf1, 0x8f,0x9a, 0xa9,0x79,0x87,0x8b,0xc1,0x95);
--MIDL_INTERFACE("0dc5e6ed-3e16-4bf1-8f9a-a979878bc195")
--ITextProvider2 : public ITextProvider
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE RangeFromAnnotation(__RPC__in_opt IRawElementProviderSimple *annotationElement, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetCaretRange(__RPC__out BOOL *isActive, __RPC__deref_out_opt ITextRangeProvider **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ITextProvider2, 0x0dc5e6ed, 0x3e16, 0x4bf1, 0x8f,0x9a, 0xa9,0x79,0x87,0x8b,0xc1,0x95)
--#endif
--#endif
--
--
--#ifndef __IToggleProvider_INTERFACE_DEFINED__
--#define __IToggleProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IToggleProvider, 0x56d00bd0, 0xc4f4, 0x433c, 0xa8,0x36, 0x1a,0x52,0xa5,0x7e,0x08,0x92);
--MIDL_INTERFACE("56d00bd0-c4f4-433c-a836-1a52a57e0892")
--IToggleProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Toggle() = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ToggleState(__RPC__out enum ToggleState *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IToggleProvider, 0x56d00bd0, 0xc4f4, 0x433c, 0xa8,0x36, 0x1a,0x52,0xa5,0x7e,0x08,0x92)
--#endif
--#endif
--
--
--#ifndef __IInvokeProvider_INTERFACE_DEFINED__
--#define __IInvokeProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IInvokeProvider, 0x54fcb24b, 0xe18e, 0x47a2, 0xb4,0xd3, 0xec,0xcb,0xe7,0x75,0x99,0xa2);
--MIDL_INTERFACE("54fcb24b-e18e-47a2-b4d3-eccbe77599a2")
--IInvokeProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Invoke() = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IInvokeProvider, 0x54fcb24b, 0xe18e, 0x47a2, 0xb4,0xd3, 0xec,0xcb,0xe7,0x75,0x99,0xa2)
--#endif
--#endif
--
--
--#ifndef __ISelectionProvider_INTERFACE_DEFINED__
--#define __ISelectionProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ISelectionProvider, 0xfb8b03af, 0x3bdf, 0x48d4, 0xbd,0x36, 0x1a,0x65,0x79,0x3b,0xe1,0x68);
--MIDL_INTERFACE("fb8b03af-3bdf-48d4-bd36-1a65793be168")
--ISelectionProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetSelection(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CanSelectMultiple(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsSelectionRequired(__RPC__out BOOL *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ISelectionProvider, 0xfb8b03af, 0x3bdf, 0x48d4, 0xbd,0x36, 0x1a,0x65,0x79,0x3b,0xe1,0x68)
--#endif
--#endif
--
--
--#ifndef __ISelectionItemProvider_INTERFACE_DEFINED__
--#define __ISelectionItemProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ISelectionItemProvider, 0x2acad808, 0xb2d4, 0x452d, 0xa4,0x07, 0x91,0xff,0x1a,0xd1,0x67,0xb2);
--MIDL_INTERFACE("2acad808-b2d4-452d-a407-91ff1ad167b2")
--ISelectionItemProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Select() = 0;
--    virtual HRESULT STDMETHODCALLTYPE AddToSelection() = 0;
--    virtual HRESULT STDMETHODCALLTYPE RemoveFromSelection() = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsSelected(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_SelectionContainer(__RPC__deref_out_opt IRawElementProviderSimple **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ISelectionItemProvider, 0x2acad808, 0xb2d4, 0x452d, 0xa4,0x07, 0x91,0xff,0x1a,0xd1,0x67,0xb2)
--#endif
--#endif
--
--
--#ifndef __ITableProvider_INTERFACE_DEFINED__
--#define __ITableProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ITableProvider, 0x9c860395, 0x97b3, 0x490a, 0xb5,0x2a, 0x85,0x8c,0xc2,0x2a,0xf1,0x66);
--MIDL_INTERFACE("9c860395-97b3-490a-b52a-858cc22af166")
--ITableProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetRowHeaders(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetColumnHeaders(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_RowOrColumnMajor(__RPC__out enum RowOrColumnMajor *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ITableProvider, 0x9c860395, 0x97b3, 0x490a, 0xb5,0x2a, 0x85,0x8c,0xc2,0x2a,0xf1,0x66)
--#endif
--#endif
--
--
--#ifndef __ITableItemProvider_INTERFACE_DEFINED__
--#define __ITableItemProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_ITableItemProvider, 0xb9734fa6, 0x771f, 0x4d78, 0x9c,0x90, 0x25,0x17,0x99,0x93,0x49,0xcd);
--MIDL_INTERFACE("b9734fa6-771f-4d78-9c90-2517999349cd")
--ITableItemProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetRowHeaderItems(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE GetColumnHeaderItems(__RPC__deref_out_opt SAFEARRAY **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(ITableItemProvider, 0xb9734fa6, 0x771f, 0x4d78, 0x9c,0x90, 0x25,0x17,0x99,0x93,0x49,0xcd)
--#endif
--#endif
--
--
--#ifndef __IGridProvider_INTERFACE_DEFINED__
--#define __IGridProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IGridProvider, 0xb17d6187, 0x0907, 0x464b, 0xa1,0x68, 0x0e,0xf1,0x7a,0x15,0x72,0xb1);
--MIDL_INTERFACE("b17d6187-0907-464b-a168-0ef17a1572b1")
--IGridProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE GetItem(int row, int column, __RPC__deref_out_opt IRawElementProviderSimple **pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_RowCount(__RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ColumnCount(__RPC__out int *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IGridProvider, 0xb17d6187, 0x0907, 0x464b, 0xa1,0x68, 0x0e,0xf1,0x7a,0x15,0x72,0xb1)
--#endif
--#endif
--
--
--#ifndef __IGridItemProvider_INTERFACE_DEFINED__
--#define __IGridItemProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IGridItemProvider, 0xd02541f1, 0xfb81, 0x4d64, 0xae,0x32, 0xf5,0x20,0xf8,0xa6,0xdb,0xd1);
--MIDL_INTERFACE("d02541f1-fb81-4d64-ae32-f520f8a6dbd1")
--IGridItemProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE get_Row(__RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_Column(__RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_RowSpan(__RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ColumnSpan(__RPC__out int *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ContainingGrid(__RPC__deref_out_opt IRawElementProviderSimple **pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IGridItemProvider, 0xd02541f1, 0xfb81, 0x4d64, 0xae,0x32, 0xf5,0x20,0xf8,0xa6,0xdb,0xd1)
--#endif
--#endif
--
--
--#ifndef __IWindowProvider_INTERFACE_DEFINED__
--#define __IWindowProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IWindowProvider, 0x987df77b, 0xdb06, 0x4d77, 0x8f,0x8a, 0x86,0xa9,0xc3,0xbb,0x90,0xb9);
--MIDL_INTERFACE("987df77b-db06-4d77-8f8a-86a9c3bb90b9")
--IWindowProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE SetVisualState(enum WindowVisualState state) = 0;
--    virtual HRESULT STDMETHODCALLTYPE Close( void) = 0;
--    virtual HRESULT STDMETHODCALLTYPE WaitForInputIdle(int milliseconds, __RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CanMaximize(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_CanMinimize(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsModal(__RPC__out BOOL *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_WindowVisualState(__RPC__out enum WindowVisualState *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_WindowInteractionState(__RPC__out enum WindowInteractionState *pRetVal) = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_IsTopmost(__RPC__out BOOL *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IWindowProvider, 0x987df77b, 0xdb06, 0x4d77, 0x8f,0x8a, 0x86,0xa9,0xc3,0xbb,0x90,0xb9)
--#endif
--#endif
--
--
--#ifndef __IExpandCollapseProvider_INTERFACE_DEFINED__
--#define __IExpandCollapseProvider_INTERFACE_DEFINED__
--DEFINE_GUID(IID_IExpandCollapseProvider, 0xd847d3a5, 0xcab0, 0x4a98, 0x8c,0x32, 0xec,0xb4,0x5c,0x59,0xad,0x24);
--MIDL_INTERFACE("d847d3a5-cab0-4a98-8c32-ecb45c59ad24")
--IExpandCollapseProvider : public IUnknown
--{
--public:
--    virtual HRESULT STDMETHODCALLTYPE Expand() = 0;
--    virtual HRESULT STDMETHODCALLTYPE Collapse() = 0;
--    virtual HRESULT STDMETHODCALLTYPE get_ExpandCollapseState(__RPC__out enum ExpandCollapseState *pRetVal) = 0;
--};
--#ifdef __CRT_UUID_DECL
--__CRT_UUID_DECL(IExpandCollapseProvider, 0xd847d3a5, 0xcab0, 0x4a98, 0x8c,0x32, 0xec,0xb4,0x5c,0x59,0xad,0x24)
--#endif
--#endif
--
--#endif
-diff --git a/src/gui/accessible/windows/apisupport/uiatypes_p.h b/src/gui/accessible/windows/apisupport/uiatypes_p.h
-deleted file mode 100644
-index 465bd07a07..0000000000
---- a/src/gui/accessible/windows/apisupport/uiatypes_p.h
-+++ /dev/null
-@@ -1,157 +0,0 @@
--// Copyright (C) 2017 The Qt Company Ltd.
--// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
--
--#ifndef UIATYPES_H
--#define UIATYPES_H
--
--//
--//  W A R N I N G
--//  -------------
--//
--// This file is not part of the Qt API. It exists purely as an
--// implementation detail. This header file may change from version to
--// version without notice, or even be removed.
--//
--// We mean it.
--//
--
--typedef int PROPERTYID;
--typedef int PATTERNID;
--typedef int EVENTID;
--typedef int TEXTATTRIBUTEID;
--typedef int CONTROLTYPEID;
--typedef int LANDMARKTYPEID;
--typedef int METADATAID;
--
--typedef void *UIA_HWND;
--
--enum NavigateDirection {
--    NavigateDirection_Parent           = 0,
--    NavigateDirection_NextSibling      = 1,
--    NavigateDirection_PreviousSibling  = 2,
--    NavigateDirection_FirstChild       = 3,
--    NavigateDirection_LastChild        = 4
--};
--
--enum ProviderOptions {
--    ProviderOptions_ClientSideProvider      = 0x1,
--    ProviderOptions_ServerSideProvider      = 0x2,
--    ProviderOptions_NonClientAreaProvider   = 0x4,
--    ProviderOptions_OverrideProvider        = 0x8,
--    ProviderOptions_ProviderOwnsSetFocus    = 0x10,
--    ProviderOptions_UseComThreading         = 0x20,
--    ProviderOptions_RefuseNonClientSupport  = 0x40,
--    ProviderOptions_HasNativeIAccessible    = 0x80,
--    ProviderOptions_UseClientCoordinates    = 0x100
--};
--
--enum SupportedTextSelection {
--    SupportedTextSelection_None      = 0,
--    SupportedTextSelection_Single    = 1,
--    SupportedTextSelection_Multiple  = 2
--};
--
--enum TextUnit {
--    TextUnit_Character  = 0,
--    TextUnit_Format     = 1,
--    TextUnit_Word       = 2,
--    TextUnit_Line       = 3,
--    TextUnit_Paragraph  = 4,
--    TextUnit_Page       = 5,
--    TextUnit_Document   = 6
--};
--
--enum TextPatternRangeEndpoint {
--    TextPatternRangeEndpoint_Start  = 0,
--    TextPatternRangeEndpoint_End    = 1
--};
--
--enum CaretPosition {
--    CaretPosition_Unknown           = 0,
--    CaretPosition_EndOfLine         = 1,
--    CaretPosition_BeginningOfLine   = 2
--};
--
--enum ToggleState {
--    ToggleState_Off            = 0,
--    ToggleState_On             = 1,
--    ToggleState_Indeterminate  = 2
--};
--
--enum RowOrColumnMajor {
--    RowOrColumnMajor_RowMajor       = 0,
--    RowOrColumnMajor_ColumnMajor    = 1,
--    RowOrColumnMajor_Indeterminate  = 2
--};
--
--enum TreeScope {
--    TreeScope_None        = 0,
--    TreeScope_Element     = 0x1,
--    TreeScope_Children    = 0x2,
--    TreeScope_Descendants = 0x4,
--    TreeScope_Parent      = 0x8,
--    TreeScope_Ancestors   = 0x10,
--    TreeScope_Subtree     = TreeScope_Element | TreeScope_Children | TreeScope_Descendants
--};
--
--enum OrientationType {
--    OrientationType_None        = 0,
--    OrientationType_Horizontal  = 1,
--    OrientationType_Vertical    = 2
--};
--
--enum PropertyConditionFlags {
--    PropertyConditionFlags_None        = 0,
--    PropertyConditionFlags_IgnoreCase  = 1
--};
--
--enum WindowVisualState {
--    WindowVisualState_Normal    = 0,
--    WindowVisualState_Maximized = 1,
--    WindowVisualState_Minimized = 2
--};
--
--enum WindowInteractionState {
--    WindowInteractionState_Running                 = 0,
--    WindowInteractionState_Closing                 = 1,
--    WindowInteractionState_ReadyForUserInteraction = 2,
--    WindowInteractionState_BlockedByModalWindow    = 3,
--    WindowInteractionState_NotResponding           = 4
--};
--
--enum ExpandCollapseState {
--    ExpandCollapseState_Collapsed         = 0,
--    ExpandCollapseState_Expanded          = 1,
--    ExpandCollapseState_PartiallyExpanded = 2,
--    ExpandCollapseState_LeafNode          = 3
--};
--
--enum NotificationKind {
--    NotificationKind_ItemAdded       = 0,
--    NotificationKind_ItemRemoved     = 1,
--    NotificationKind_ActionCompleted = 2,
--    NotificationKind_ActionAborted   = 3,
--    NotificationKind_Other           = 4
--};
--
--enum NotificationProcessing {
--    NotificationProcessing_ImportantAll          = 0,
--    NotificationProcessing_ImportantMostRecent   = 1,
--    NotificationProcessing_All                   = 2,
--    NotificationProcessing_MostRecent            = 3,
--    NotificationProcessing_CurrentThenMostRecent = 4
--};
--
--struct UiaRect {
--    double left;
--    double top;
--    double width;
--    double height;
--};
--
--struct UiaPoint {
--    double x;
--    double y;
--};
--
--#endif
 diff --git a/src/gui/opengl/qopengl.cpp b/src/gui/opengl/qopengl.cpp
 index 7c997103d5..2821915c92 100644
 --- a/src/gui/opengl/qopengl.cpp
@@ -2775,10 +1619,10 @@ index 7c997103d5..2821915c92 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index 8da44eee32..9dbb0b4b11 100644
+index c49b40bcd8..a6bc4ab57a 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
-@@ -9,6 +9,8 @@
+@@ -8,6 +8,8 @@
  #include <qmath.h>
  #include <private/qsystemlibrary_p.h>
  #include <QtCore/qcryptographichash.h>
@@ -2787,7 +1631,7 @@ index 8da44eee32..9dbb0b4b11 100644
  #include <QtCore/private/qsystemerror_p.h>
  
  #include <d3dcompiler.h>
-@@ -96,6 +98,9 @@ using namespace Qt::StringLiterals;
+@@ -93,6 +95,9 @@ using namespace Qt::StringLiterals;
  #define D3D11_VS_INPUT_REGISTER_COUNT 32
  #endif
  
@@ -2795,9 +1639,9 @@ index 8da44eee32..9dbb0b4b11 100644
 +static constexpr const auto qWKPDID_D3DDebugObjectNameW = GUID{0x4cca5fd8,0x921f,0x42c8,{0x85,0x66,0x70,0xca,0xf2,0xa9,0xb7,0x41}};
 +
  QRhiD3D11::QRhiD3D11(QRhiD3D11InitParams *params, QRhiD3D11NativeHandles *importParams)
-     : ofr(this),
-       deviceCurse(this)
-@@ -109,7 +114,7 @@ QRhiD3D11::QRhiD3D11(QRhiD3D11InitParams *params, QRhiD3D11NativeHandles *import
+     : ofr(this)
+ {
+@@ -102,7 +107,7 @@ QRhiD3D11::QRhiD3D11(QRhiD3D11InitParams *params, QRhiD3D11NativeHandles *import
          if (importParams->dev && importParams->context) {
              dev = reinterpret_cast<ID3D11Device *>(importParams->dev);
              ID3D11DeviceContext *ctx = reinterpret_cast<ID3D11DeviceContext *>(importParams->context);
@@ -2806,7 +1650,7 @@ index 8da44eee32..9dbb0b4b11 100644
                  // get rid of the ref added by QueryInterface
                  ctx->Release();
                  importedDeviceAndContext = true;
-@@ -129,112 +134,174 @@ inline Int aligned(Int v, Int byteAlign)
+@@ -122,112 +127,174 @@ inline Int aligned(Int v, Int byteAlign)
      return (v + byteAlign - 1) & ~(byteAlign - 1);
  }
  
@@ -3061,7 +1905,7 @@ index 8da44eee32..9dbb0b4b11 100644
  
          // Normally we won't specify a requested feature level list,
          // except when a level was specified in importParams.
-@@ -245,27 +312,55 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -238,27 +305,55 @@ bool QRhiD3D11::create(QRhi::Flags flags)
              requestedFeatureLevels.append(featureLevel);
          }
  
@@ -3130,7 +1974,7 @@ index 8da44eee32..9dbb0b4b11 100644
          }
  
          // Test if creating a Shader Model 5.0 vertex shader works; we want to
-@@ -279,7 +374,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -272,7 +367,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
              return false;
          }
  
@@ -3139,7 +1983,7 @@ index 8da44eee32..9dbb0b4b11 100644
          ctx->Release();
          if (!supports11_1) {
              qWarning("ID3D11DeviceContext1 not supported");
-@@ -289,7 +384,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -282,7 +377,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          Q_ASSERT(dev && context);
          featureLevel = dev->GetFeatureLevel();
          IDXGIDevice *dxgiDev = nullptr;
@@ -3148,7 +1992,7 @@ index 8da44eee32..9dbb0b4b11 100644
              IDXGIAdapter *adapter = nullptr;
              if (SUCCEEDED(dxgiDev->GetAdapter(&adapter))) {
                  DXGI_ADAPTER_DESC desc;
-@@ -305,7 +400,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -298,7 +393,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          qCDebug(QRHI_LOG_INFO, "Using imported device %p", dev);
      }
  
@@ -3157,7 +2001,7 @@ index 8da44eee32..9dbb0b4b11 100644
          annotations = nullptr;
  
      deviceLost = false;
-@@ -374,7 +469,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
+@@ -362,7 +457,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
  {
      // this works only when params.enableDebugLayer was true
      ID3D11Debug *debug;
@@ -3166,7 +2010,7 @@ index 8da44eee32..9dbb0b4b11 100644
          debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
          debug->Release();
      }
-@@ -2871,7 +2966,7 @@ bool QD3D11Buffer::create()
+@@ -2851,7 +2946,7 @@ bool QD3D11Buffer::create()
      }
  
      if (!m_objectName.isEmpty())
@@ -3175,7 +2019,7 @@ index 8da44eee32..9dbb0b4b11 100644
  
      generation += 1;
      rhiD->registerResource(this);
-@@ -3037,7 +3132,7 @@ bool QD3D11RenderBuffer::create()
+@@ -3020,7 +3115,7 @@ bool QD3D11RenderBuffer::create()
      }
  
      if (!m_objectName.isEmpty())
@@ -3184,7 +2028,7 @@ index 8da44eee32..9dbb0b4b11 100644
  
      generation += 1;
      rhiD->registerResource(this);
-@@ -3332,7 +3427,7 @@ bool QD3D11Texture::create()
+@@ -3315,7 +3410,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -3193,7 +2037,7 @@ index 8da44eee32..9dbb0b4b11 100644
                                  m_objectName.constData());
      } else if (!is3D) {
          D3D11_TEXTURE2D_DESC desc = {};
-@@ -3353,7 +3448,7 @@ bool QD3D11Texture::create()
+@@ -3336,7 +3431,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -3202,7 +2046,7 @@ index 8da44eee32..9dbb0b4b11 100644
      } else {
          D3D11_TEXTURE3D_DESC desc = {};
          desc.Width = UINT(size.width());
-@@ -3372,7 +3467,7 @@ bool QD3D11Texture::create()
+@@ -3355,7 +3450,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -3211,7 +2055,7 @@ index 8da44eee32..9dbb0b4b11 100644
      }
  
      if (!finishCreate())
-@@ -4748,7 +4843,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+@@ -4729,7 +4824,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
          }
      }
      if (currentOutput) {
@@ -3220,7 +2064,7 @@ index 8da44eee32..9dbb0b4b11 100644
          currentOutput->Release();
      }
      return ok;
-@@ -4776,6 +4871,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
+@@ -4757,6 +4852,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
      }
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -3229,7 +2073,7 @@ index 8da44eee32..9dbb0b4b11 100644
      DXGI_OUTPUT_DESC1 desc1;
      if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &desc1))
          return desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-@@ -4788,6 +4885,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
+@@ -4769,6 +4866,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
      QRhiSwapChainHdrInfo info = QRhiSwapChain::hdrInfo();
      if (m_format != QRhiSwapChain::SDR && m_window) {
          QRHI_RES_RHI(QRhiD3D11);
@@ -3238,7 +2082,7 @@ index 8da44eee32..9dbb0b4b11 100644
          DXGI_OUTPUT_DESC1 hdrOutputDesc;
          if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &hdrOutputDesc)) {
              info.isHardCodedDefaults = false;
-@@ -4845,12 +4944,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+@@ -4826,12 +4925,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
  
  bool QRhiD3D11::ensureDirectCompositionDevice()
  {
@@ -3258,7 +2102,7 @@ index 8da44eee32..9dbb0b4b11 100644
      if (FAILED(hr)) {
          qWarning("Failed to Direct Composition device: %s",
              qPrintable(QSystemError::windowsComString(hr)));
-@@ -4883,12 +4988,18 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4864,12 +4969,18 @@ bool QD3D11SwapChain::createOrResize()
      HRESULT hr;
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -3277,7 +2121,7 @@ index 8da44eee32..9dbb0b4b11 100644
                      qWarning("Failed to create Direct Compsition target for the window: %s",
                               qPrintable(QSystemError::windowsComString(hr)));
                  }
-@@ -4896,10 +5007,15 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4877,10 +4988,15 @@ bool QD3D11SwapChain::createOrResize()
              if (dcompTarget && !dcompVisual) {
                  hr = rhiD->dcompDevice->CreateVisual(&dcompVisual);
                  if (FAILED(hr)) {
@@ -3293,7 +2137,7 @@ index 8da44eee32..9dbb0b4b11 100644
          }
          // simple consistency check
          if (window->requestedFormat().alphaBufferSize() <= 0)
-@@ -4914,7 +5030,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4895,7 +5011,7 @@ bool QD3D11SwapChain::createOrResize()
      // ALLOW_TEARING, and ALLOW_TEARING is not compatible with it at all so the
      // flag must not be set then. Whereas for flip we should use it, if
      // supported, to get better results for 'unthrottled' presentation.
@@ -3302,7 +2146,7 @@ index 8da44eee32..9dbb0b4b11 100644
          swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
  
      if (!swapChain) {
-@@ -4922,121 +5038,145 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4903,121 +5019,145 @@ bool QD3D11SwapChain::createOrResize()
          colorFormat = DEFAULT_FORMAT;
          srgbAdjustedColorFormat = m_flags.testFlag(sRGB) ? DEFAULT_SRGB_FORMAT : DEFAULT_FORMAT;
  
@@ -3540,7 +2384,7 @@ index 8da44eee32..9dbb0b4b11 100644
                                        colorFormat, swapChainFlags);
          if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
              qWarning("Device loss detected in ResizeBuffers()");
-@@ -5063,7 +5203,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -5044,7 +5184,7 @@ bool QD3D11SwapChain::createOrResize()
      // swapchain."
  
      // So just query index 0 once (per resize) and be done with it.
@@ -3550,7 +2394,7 @@ index 8da44eee32..9dbb0b4b11 100644
          qWarning("Failed to query swapchain backbuffer: %s",
              qPrintable(QSystemError::windowsComString(hr)));
 diff --git a/src/gui/rhi/qrhid3d11_p_p.h b/src/gui/rhi/qrhid3d11_p_p.h
-index 3f4d8e8e31..f88c6d047f 100644
+index 8b56ccbf33..993f1c87ed 100644
 --- a/src/gui/rhi/qrhid3d11_p_p.h
 +++ b/src/gui/rhi/qrhid3d11_p_p.h
 @@ -737,8 +737,9 @@ public:
@@ -3564,6 +2408,380 @@ index 3f4d8e8e31..f88c6d047f 100644
      bool supportsAllowTearing = false;
      bool deviceLost = false;
      QRhiD3D11NativeHandles nativeHandlesStruct;
+diff --git a/src/gui/rhi/qrhid3d12.cpp b/src/gui/rhi/qrhid3d12.cpp
+index 20d01db1fa..ada9497b37 100644
+--- a/src/gui/rhi/qrhid3d12.cpp
++++ b/src/gui/rhi/qrhid3d12.cpp
+@@ -79,8 +79,54 @@ QT_BEGIN_NAMESPACE
+     \l{QRhi::endOffscreenFrame()}{endOffscreenFrame()} pair.
+  */
+ 
++using namespace Qt::StringLiterals;
++
+ // https://learn.microsoft.com/en-us/windows/win32/direct3d12/hardware-feature-levels
+-static const D3D_FEATURE_LEVEL MIN_FEATURE_LEVEL = D3D_FEATURE_LEVEL_11_0;
++static constexpr const D3D_FEATURE_LEVEL MIN_FEATURE_LEVEL = D3D_FEATURE_LEVEL_11_0;
++
++struct QtD3D12ApiSupport
++{
++    decltype(&::CreateDXGIFactory2) pCreateDXGIFactory2 = nullptr;
++    decltype(&::DCompositionCreateDevice) pDCompositionCreateDevice = nullptr;
++    decltype(&::D3D12CreateDevice) pD3D12CreateDevice = nullptr;
++    decltype(&::D3D12GetDebugInterface) pD3D12GetDebugInterface = nullptr;
++    decltype(&::D3D12SerializeVersionedRootSignature) pD3D12SerializeVersionedRootSignature = nullptr;
++
++    explicit QtD3D12ApiSupport()
++    {
++        pCreateDXGIFactory2 =
++            reinterpret_cast<decltype(pCreateDXGIFactory2)>(
++                QSystemLibrary::resolve(u"dxgi"_s, "CreateDXGIFactory2"));
++        pDCompositionCreateDevice =
++            reinterpret_cast<decltype(pDCompositionCreateDevice)>(
++                QSystemLibrary::resolve(u"dcomp"_s, "DCompositionCreateDevice"));
++        QSystemLibrary d3d12(u"d3d12"_s);
++        pD3D12CreateDevice =
++            reinterpret_cast<decltype(pD3D12CreateDevice)>(
++                d3d12.resolve("D3D12CreateDevice"));
++        pD3D12GetDebugInterface =
++            reinterpret_cast<decltype(pD3D12GetDebugInterface)>(
++                d3d12.resolve("D3D12GetDebugInterface"));
++        pD3D12SerializeVersionedRootSignature =
++            reinterpret_cast<decltype(pD3D12SerializeVersionedRootSignature)>(
++                d3d12.resolve("D3D12SerializeVersionedRootSignature"));
++    }
++
++    ~QtD3D12ApiSupport() = default;
++
++    [[nodiscard]] static QtD3D12ApiSupport *instance()
++    {
++        static QtD3D12ApiSupport support;
++        return &support;
++    }
++
++    [[nodiscard]] bool isAvailable() const
++    {
++        return pCreateDXGIFactory2 && pDCompositionCreateDevice
++                && pD3D12CreateDevice && pD3D12GetDebugInterface
++                && pD3D12SerializeVersionedRootSignature;
++    }
++};
+ 
+ QRhiD3D12::QRhiD3D12(QRhiD3D12InitParams *params, QRhiD3D12NativeHandles *importParams)
+ {
+@@ -127,12 +173,18 @@ static inline QD3D12RenderTargetData *rtData(QRhiRenderTarget *rt)
+ 
+ bool QRhiD3D12::create(QRhi::Flags flags)
+ {
++    if (!QtD3D12ApiSupport::instance()->isAvailable()) {
++        qWarning() << "D3D12 is not available on current platform.";
++        return false;
++    }
++
+     rhiFlags = flags;
+ 
+     UINT factoryFlags = 0;
+     if (debugLayer)
+         factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+-    HRESULT hr = CreateDXGIFactory2(factoryFlags, __uuidof(IDXGIFactory2), reinterpret_cast<void **>(&dxgiFactory));
++    HRESULT hr = QtD3D12ApiSupport::instance()->pCreateDXGIFactory2(
++                factoryFlags, IID_PPV_ARGS(&dxgiFactory));
+     if (FAILED(hr)) {
+         qWarning("CreateDXGIFactory2() failed to create DXGI factory: %s",
+                  qPrintable(QSystemError::windowsComString(hr)));
+@@ -141,7 +193,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+ 
+     supportsAllowTearing = false;
+     IDXGIFactory5 *factory5 = nullptr;
+-    if (SUCCEEDED(dxgiFactory->QueryInterface(__uuidof(IDXGIFactory5), reinterpret_cast<void **>(&factory5)))) {
++    if (SUCCEEDED(dxgiFactory->QueryInterface(IID_PPV_ARGS(&factory5)))) {
+         BOOL allowTearing = false;
+         if (SUCCEEDED(factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
+             supportsAllowTearing = allowTearing;
+@@ -150,7 +202,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+ 
+     if (debugLayer) {
+         ID3D12Debug1 *debug = nullptr;
+-        if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(ID3D12Debug1), reinterpret_cast<void **>(&debug)))) {
++        if (SUCCEEDED(QtD3D12ApiSupport::instance()->pD3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
+             qCDebug(QRHI_LOG_INFO, "Enabling D3D12 debug layer");
+             debug->EnableDebugLayer();
+             debug->Release();
+@@ -220,10 +272,8 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+         if (minimumFeatureLevel == 0)
+             minimumFeatureLevel = MIN_FEATURE_LEVEL;
+ 
+-        hr = D3D12CreateDevice(activeAdapter,
+-                               minimumFeatureLevel,
+-                               __uuidof(ID3D12Device),
+-                               reinterpret_cast<void **>(&dev));
++        hr = QtD3D12ApiSupport::instance()->pD3D12CreateDevice(
++                activeAdapter, minimumFeatureLevel, IID_PPV_ARGS(&dev));
+         if (FAILED(hr)) {
+             qWarning("Failed to create D3D12 device: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+@@ -251,7 +301,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+ 
+     if (debugLayer) {
+         ID3D12InfoQueue *infoQueue;
+-        if (SUCCEEDED(dev->QueryInterface(__uuidof(ID3D12InfoQueue), reinterpret_cast<void **>(&infoQueue)))) {
++        if (SUCCEEDED(dev->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
+             if (qEnvironmentVariableIntValue("QT_D3D_DEBUG_BREAK")) {
+                 infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+                 infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+@@ -280,14 +330,14 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+         queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+         queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+-        hr = dev->CreateCommandQueue(&queueDesc, __uuidof(ID3D12CommandQueue), reinterpret_cast<void **>(&cmdQueue));
++        hr = dev->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue));
+         if (FAILED(hr)) {
+             qWarning("Failed to create command queue: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+         }
+     }
+ 
+-    hr = dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), reinterpret_cast<void **>(&fullFence));
++    hr = dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fullFence));
+     if (FAILED(hr)) {
+         qWarning("Failed to create fence: %s", qPrintable(QSystemError::windowsComString(hr)));
+         return false;
+@@ -297,8 +347,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+ 
+     for (int i = 0; i < QD3D12_FRAMES_IN_FLIGHT; ++i) {
+         hr = dev->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+-                                         __uuidof(ID3D12CommandAllocator),
+-                                         reinterpret_cast<void **>(&cmdAllocators[i]));
++                                         IID_PPV_ARGS(&cmdAllocators[i]));
+         if (FAILED(hr)) {
+             qWarning("Failed to create command allocator: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+@@ -1794,7 +1843,7 @@ bool QD3D12DescriptorHeap::create(ID3D12Device *device,
+     heapDesc.NumDescriptors = capacity;
+     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAGS(heapFlags);
+ 
+-    HRESULT hr = device->CreateDescriptorHeap(&heapDesc, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void **>(&heap));
++    HRESULT hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&heap));
+     if (FAILED(hr)) {
+         qWarning("Failed to create descriptor heap: %s", qPrintable(QSystemError::windowsComString(hr)));
+         heap = nullptr;
+@@ -1981,8 +2030,7 @@ bool QD3D12StagingArea::create(QRhiD3D12 *rhi, quint32 capacity, D3D12_HEAP_TYPE
+                                          D3D12_RESOURCE_STATES(state),
+                                          nullptr,
+                                          &allocation,
+-                                         __uuidof(ID3D12Resource),
+-                                         reinterpret_cast<void **>(&resource));
++                                         IID_PPV_ARGS(&resource));
+     if (FAILED(hr)) {
+         qWarning("Failed to create buffer for staging area: %s",
+                  qPrintable(QSystemError::windowsComString(hr)));
+@@ -2446,6 +2494,9 @@ QD3D12Descriptor QD3D12SamplerManager::getShaderVisibleDescriptor(const D3D12_SA
+ 
+ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+ {
++    if (!QtD3D12ApiSupport::instance()->isAvailable())
++        return false;
++
+     this->rhiD = rhiD;
+ 
+     D3D12_ROOT_PARAMETER1 rootParams[3] = {};
+@@ -2489,7 +2540,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+     rsDesc.Desc_1_1.pStaticSamplers = &samplerDesc;
+ 
+     ID3DBlob *signature = nullptr;
+-    HRESULT hr = D3D12SerializeVersionedRootSignature(&rsDesc, &signature, nullptr);
++    HRESULT hr = QtD3D12ApiSupport::instance()->pD3D12SerializeVersionedRootSignature(&rsDesc, &signature, nullptr);
+     if (FAILED(hr)) {
+         qWarning("Failed to serialize root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
+         return false;
+@@ -2498,8 +2549,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+     hr = rhiD->dev->CreateRootSignature(0,
+                                         signature->GetBufferPointer(),
+                                         signature->GetBufferSize(),
+-                                        __uuidof(ID3D12RootSignature),
+-                                        reinterpret_cast<void **>(&rootSig));
++                                        IID_PPV_ARGS(&rootSig));
+     signature->Release();
+     if (FAILED(hr)) {
+         qWarning("Failed to create root signature: %s",
+@@ -2514,9 +2564,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+     psoDesc.CS.pShaderBytecode = g_csMipmap;
+     psoDesc.CS.BytecodeLength = sizeof(g_csMipmap);
+     ID3D12PipelineState *pso = nullptr;
+-    hr = rhiD->dev->CreateComputePipelineState(&psoDesc,
+-                                               __uuidof(ID3D12PipelineState),
+-                                               reinterpret_cast<void **>(&pso));
++    hr = rhiD->dev->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+     if (FAILED(hr)) {
+         qWarning("Failed to create compute pipeline state: %s",
+                  qPrintable(QSystemError::windowsComString(hr)));
+@@ -2839,8 +2887,7 @@ bool QRhiD3D12::startCommandListForCurrentFrameSlot(ID3D12GraphicsCommandList **
+                                             D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                             cmdAlloc,
+                                             nullptr,
+-                                            __uuidof(ID3D12GraphicsCommandList),
+-                                            reinterpret_cast<void **>(cmdList));
++                                            IID_PPV_ARGS(cmdList));
+         if (FAILED(hr)) {
+             qWarning("Failed to create command list: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+@@ -3424,8 +3471,7 @@ bool QD3D12Buffer::create()
+                                           resourceState,
+                                           nullptr,
+                                           &allocation,
+-                                          __uuidof(resource),
+-                                          reinterpret_cast<void **>(&resource));
++                                          IID_PPV_ARGS(&resource));
+             if (FAILED(hr))
+                 break;
+             if (!m_objectName.isEmpty()) {
+@@ -3684,8 +3730,7 @@ bool QD3D12RenderBuffer::create()
+                                               D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                               &clearValue,
+                                               &allocation,
+-                                              __uuidof(ID3D12Resource),
+-                                              reinterpret_cast<void **>(&resource));
++                                              IID_PPV_ARGS(&resource));
+         if (FAILED(hr)) {
+             qWarning("Failed to create color buffer: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+@@ -3728,8 +3773,7 @@ bool QD3D12RenderBuffer::create()
+                                               D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                                               &clearValue,
+                                               &allocation,
+-                                              __uuidof(ID3D12Resource),
+-                                              reinterpret_cast<void **>(&resource));
++                                              IID_PPV_ARGS(&resource));
+         if (FAILED(hr)) {
+             qWarning("Failed to create depth-stencil buffer: %s", qPrintable(QSystemError::windowsComString(hr)));
+             return false;
+@@ -4059,8 +4103,7 @@ bool QD3D12Texture::create()
+                                           D3D12_RESOURCE_STATE_COMMON,
+                                           needsOptimizedClearValueSpecified ? &clearValue : nullptr,
+                                           &allocation,
+-                                          __uuidof(ID3D12Resource),
+-                                          reinterpret_cast<void **>(&resource));
++                                          IID_PPV_ARGS(&resource));
+     if (FAILED(hr)) {
+         qWarning("Failed to create texture: '%s'"
+                  " Dim was %d Size was %ux%u Depth/ArraySize was %u MipLevels was %u Format was %d Sample count was %d",
+@@ -4612,6 +4655,9 @@ void QD3D12ShaderResourceBindings::visitStorageImage(QD3D12Stage s,
+ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D12ShaderStageData *stageData,
+                                                                      int stageCount)
+ {
++    if (!QtD3D12ApiSupport::instance()->pD3D12SerializeVersionedRootSignature)
++        return {};
++
+     QRHI_RES_RHI(QRhiD3D12);
+ 
+     // It's not just that the root signature has to be tied to the pipeline
+@@ -4698,7 +4744,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
+     rsDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAGS(rsFlags);
+ 
+     ID3DBlob *signature = nullptr;
+-    HRESULT hr = D3D12SerializeVersionedRootSignature(&rsDesc, &signature, nullptr);
++    HRESULT hr = QtD3D12ApiSupport::instance()->pD3D12SerializeVersionedRootSignature(&rsDesc, &signature, nullptr);
+     if (FAILED(hr)) {
+         qWarning("Failed to serialize root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
+         return {};
+@@ -4707,8 +4753,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
+     hr = rhiD->dev->CreateRootSignature(0,
+                                         signature->GetBufferPointer(),
+                                         signature->GetBufferSize(),
+-                                        __uuidof(ID3D12RootSignature),
+-                                        reinterpret_cast<void **>(&rootSig));
++                                        IID_PPV_ARGS(&rootSig));
+     signature->Release();
+     if (FAILED(hr)) {
+         qWarning("Failed to create root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
+@@ -5290,9 +5335,7 @@ bool QD3D12GraphicsPipeline::create()
+     psoDesc.SampleDesc = sampleDesc;
+ 
+     ID3D12PipelineState *pso = nullptr;
+-    HRESULT hr = rhiD->dev->CreateGraphicsPipelineState(&psoDesc,
+-                                                        __uuidof(ID3D12PipelineState),
+-                                                       reinterpret_cast<void **>(&pso));
++    HRESULT hr = rhiD->dev->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+     if (FAILED(hr)) {
+         qWarning("Failed to create graphics pipeline state: %s",
+                  qPrintable(QSystemError::windowsComString(hr)));
+@@ -5396,9 +5439,7 @@ bool QD3D12ComputePipeline::create()
+     psoDesc.CS.pShaderBytecode = shaderBytecode.constData();
+     psoDesc.CS.BytecodeLength = shaderBytecode.size();
+     ID3D12PipelineState *pso = nullptr;
+-    HRESULT hr = rhiD->dev->CreateComputePipelineState(&psoDesc,
+-                                                       __uuidof(ID3D12PipelineState),
+-                                                       reinterpret_cast<void **>(&pso));
++    HRESULT hr = rhiD->dev->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+     if (FAILED(hr)) {
+         qWarning("Failed to create compute pipeline state: %s",
+                  qPrintable(QSystemError::windowsComString(hr)));
+@@ -5661,7 +5702,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+         }
+     }
+     if (currentOutput) {
+-        ok = SUCCEEDED(currentOutput->QueryInterface(__uuidof(IDXGIOutput6), reinterpret_cast<void **>(result)));
++        ok = SUCCEEDED(currentOutput->QueryInterface(IID_PPV_ARGS(result)));
+         currentOutput->Release();
+     }
+     return ok;
+@@ -5731,12 +5772,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+ 
+ bool QRhiD3D12::ensureDirectCompositionDevice()
+ {
++    if (!QtD3D12ApiSupport::instance()->pDCompositionCreateDevice) {
++        qWarning() << "DirectComposition is not available on current platform.";
++        return false;
++    }
++
+     if (dcompDevice)
+         return true;
+ 
+     qCDebug(QRHI_LOG_INFO, "Creating Direct Composition device (needed for semi-transparent windows)");
+ 
+-    HRESULT hr = DCompositionCreateDevice(nullptr, __uuidof(IDCompositionDevice), reinterpret_cast<void **>(&dcompDevice));
++    HRESULT hr = QtD3D12ApiSupport::instance()->pDCompositionCreateDevice(
++                nullptr, IID_PPV_ARGS(&dcompDevice));
+     if (FAILED(hr)) {
+         qWarning("Failed to Direct Composition device: %s", qPrintable(QSystemError::windowsComString(hr)));
+         return false;
+@@ -5875,7 +5922,7 @@ bool QD3D12SwapChain::createOrResize()
+         }
+ 
+         if (SUCCEEDED(hr)) {
+-            if (FAILED(sourceSwapChain1->QueryInterface(__uuidof(IDXGISwapChain3), reinterpret_cast<void **>(&swapChain)))) {
++            if (FAILED(sourceSwapChain1->QueryInterface(IID_PPV_ARGS(&swapChain)))) {
+                 qWarning("IDXGISwapChain3 not available");
+                 return false;
+             }
+@@ -5909,8 +5956,7 @@ bool QD3D12SwapChain::createOrResize()
+         for (int i = 0; i < QD3D12_FRAMES_IN_FLIGHT; ++i) {
+             hr = rhiD->dev->CreateFence(0,
+                                         D3D12_FENCE_FLAG_NONE,
+-                                        __uuidof(ID3D12Fence),
+-                                        reinterpret_cast<void **>(&frameRes[i].fence));
++                                        IID_PPV_ARGS(&frameRes[i].fence));
+             if (FAILED(hr)) {
+                 qWarning("Failed to create fence for swapchain: %s",
+                          qPrintable(QSystemError::windowsComString(hr)));
+@@ -5939,7 +5985,7 @@ bool QD3D12SwapChain::createOrResize()
+ 
+     for (UINT i = 0; i < BUFFER_COUNT; ++i) {
+         ID3D12Resource *colorBuffer;
+-        hr = swapChain->GetBuffer(i, __uuidof(ID3D12Resource), reinterpret_cast<void **>(&colorBuffer));
++        hr = swapChain->GetBuffer(i, IID_PPV_ARGS(&colorBuffer));
+         if (FAILED(hr)) {
+             qWarning("Failed to get buffer %u for D3D12 swapchain: %s",
+                      i, qPrintable(QSystemError::windowsComString(hr)));
+@@ -5993,8 +6039,7 @@ bool QD3D12SwapChain::createOrResize()
+                                                   D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                   &clearValue,
+                                                   &allocation,
+-                                                  __uuidof(ID3D12Resource),
+-                                                  reinterpret_cast<void **>(&resource));
++                                                  IID_PPV_ARGS(&resource));
+             if (FAILED(hr)) {
+                 qWarning("Failed to create MSAA color buffer: %s", qPrintable(QSystemError::windowsComString(hr)));
+                 return false;
 diff --git a/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp b/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp
 index 6b4933cca7..eed71b6e94 100644
 --- a/src/gui/text/windows/qwindowsdirectwritefontdatabase.cpp
@@ -3690,6 +2908,43 @@ index 14dd064c33..026211c0a3 100644
  
      IDWriteGlyphRunAnalysis *glyphAnalysis = NULL;
      if (SUCCEEDED(hr)) {
+diff --git a/src/network/socket/qnativesocketengine_win.cpp b/src/network/socket/qnativesocketengine_win.cpp
+index d578e5230f..98c72b8067 100644
+--- a/src/network/socket/qnativesocketengine_win.cpp
++++ b/src/network/socket/qnativesocketengine_win.cpp
+@@ -274,12 +274,31 @@ bool QNativeSocketEnginePrivate::createNewSocket(QAbstractSocket::SocketType soc
+     // MSDN KB179942 states that on winnt 4 WSA_FLAG_OVERLAPPED is needed if socket is to be non
+     // blocking and recommends always doing it for cross-windows-version compatibility.
+ 
+-    // WSA_FLAG_NO_HANDLE_INHERIT is atomic (like linux O_CLOEXEC)
++    // WSA_FLAG_NO_HANDLE_INHERIT is atomic (like linux O_CLOEXEC), but requires windows 7 SP 1 or later
++    // SetHandleInformation is supported since W2K but isn't atomic
+ #ifndef WSA_FLAG_NO_HANDLE_INHERIT
+ #define WSA_FLAG_NO_HANDLE_INHERIT 0x80
+ #endif
+ 
+     SOCKET socket = ::WSASocket(protocol, type, 0, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT | WSA_FLAG_OVERLAPPED);
++    // previous call fails if the windows 7 service pack 1 or hot fix isn't installed.
++
++    // Try the old API if the new one failed on Windows 7
++    if (socket == INVALID_SOCKET && !QOperatingSystemVersion::isWin8OrGreater()) {
++        socket = ::WSASocket(protocol, type, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
++#ifdef HANDLE_FLAG_INHERIT
++        if (socket != INVALID_SOCKET) {
++            // make non inheritable the old way
++            BOOL handleFlags = SetHandleInformation(reinterpret_cast<HANDLE>(socket), HANDLE_FLAG_INHERIT, 0);
++#  ifdef QNATIVESOCKETENGINE_DEBUG
++            qDebug() << "QNativeSocketEnginePrivate::createNewSocket - set inheritable" << handleFlags;
++#  else // !QNATIVESOCKETENGINE_DEBUG
++            Q_UNUSED(handleFlags);
++#  endif // QNATIVESOCKETENGINE_DEBUG
++        }
++#endif // HANDLE_FLAG_INHERIT
++    }
++
+     if (socket == INVALID_SOCKET) {
+         int err = WSAGetLastError();
+         WS_ERROR_DEBUG(err);
 diff --git a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp b/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
 index 5b0a91df3e..ec2207f833 100644
 --- a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
@@ -3791,10 +3046,10 @@ index 5b0a91df3e..ec2207f833 100644
      ConnectionProfile profile = nullptr;
      try {
 diff --git a/src/plugins/platforms/CMakeLists.txt b/src/plugins/platforms/CMakeLists.txt
-index dfbec51877..34107a6741 100644
+index bcf29dedd1..4095e3f023 100644
 --- a/src/plugins/platforms/CMakeLists.txt
 +++ b/src/plugins/platforms/CMakeLists.txt
-@@ -6,12 +6,6 @@
+@@ -4,12 +4,6 @@
  if(ANDROID)
      add_subdirectory(android)
  endif()
@@ -3807,7 +3062,7 @@ index dfbec51877..34107a6741 100644
  if(QT_FEATURE_xcb)
      add_subdirectory(xcb)
  endif()
-@@ -24,9 +18,6 @@ endif()
+@@ -22,9 +16,6 @@ endif()
  if(WIN32)
      add_subdirectory(windows)
  endif()
@@ -3818,10 +3073,10 @@ index dfbec51877..34107a6741 100644
      add_subdirectory(qnx)
  endif()
 diff --git a/src/plugins/platforms/windows/CMakeLists.txt b/src/plugins/platforms/windows/CMakeLists.txt
-index 7884fc164e..138c91025e 100644
+index 4425e78b30..7b51026bd3 100644
 --- a/src/plugins/platforms/windows/CMakeLists.txt
 +++ b/src/plugins/platforms/windows/CMakeLists.txt
-@@ -51,7 +51,6 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
+@@ -49,7 +49,6 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
          Qt::Gui
          Qt::GuiPrivate
          advapi32
@@ -3829,7 +3084,7 @@ index 7884fc164e..138c91025e 100644
          gdi32
          imm32
          ole32
-@@ -62,10 +61,7 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
+@@ -60,10 +59,7 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
          winmm
          winspool
          wtsapi32
@@ -3839,8 +3094,8 @@ index 7884fc164e..138c91025e 100644
 -        runtimeobject
  )
  
- # Resources:
-@@ -198,6 +194,8 @@ qt_internal_extend_target(QWindowsIntegrationPlugin CONDITION QT_FEATURE_accessi
+ # Duplicated symbols
+@@ -193,6 +189,8 @@ qt_internal_extend_target(QWindowsIntegrationPlugin CONDITION QT_FEATURE_accessi
          uiautomation/qwindowsuiautils.cpp uiautomation/qwindowsuiautils.h
          uiautomation/qwindowsuiavalueprovider.cpp uiautomation/qwindowsuiavalueprovider.h
          uiautomation/qwindowsuiawindowprovider.cpp uiautomation/qwindowsuiawindowprovider.h
@@ -3929,38 +3184,8 @@ index 026e81cb0c..e17d2bc20d 100644
      ABI::Windows::UI::ViewManagement::IUIViewSettings *viewSettings = nullptr;
      hr = uiViewSettingsInterop->GetForWindow(hwnd, uiViewSettingsRefId,
                                               reinterpret_cast<void **>(&viewSettings));
-diff --git a/src/plugins/platforms/windows/qwindowsapplication.cpp b/src/plugins/platforms/windows/qwindowsapplication.cpp
-index 5d1b6d348b..bfef10e673 100644
---- a/src/plugins/platforms/windows/qwindowsapplication.cpp
-+++ b/src/plugins/platforms/windows/qwindowsapplication.cpp
-@@ -12,6 +12,7 @@
- 
- #include <QtCore/qvariant.h>
- #include <QtCore/private/qfunctions_win_p.h>
-+#include <QtCore/qoperatingsystemversion.h>
- 
- #include <QtGui/qpalette.h>
- 
-@@ -181,11 +182,12 @@ void QWindowsApplication::lightSystemPalette(QPalette &result) const
-     QColor accent = getSysColor(COLOR_HIGHLIGHT);
- 
- #if QT_CONFIG(cpp_winrt)
--    // respect the Windows 11 accent color
--    using namespace winrt::Windows::UI::ViewManagement;
--    const auto settings = UISettings();
--
--    accent = getSysColor(settings.GetColorValue(UIColorType::Accent));
-+    if (QOperatingSystemVersion::isWin10RS5OrGreater()) {
-+        // Respect the accent color on modern Windows.
-+        using namespace winrt::Windows::UI::ViewManagement;
-+        const auto settings = UISettings();
-+        accent = getSysColor(settings.GetColorValue(UIColorType::Accent));
-+    }
- #endif
- 
-     const QColor btnFace = background;
 diff --git a/src/plugins/platforms/windows/qwindowscontext.cpp b/src/plugins/platforms/windows/qwindowscontext.cpp
-index 3fe91d2935..743f27da42 100644
+index 7fe5b2592c..41d45ed41d 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.cpp
 +++ b/src/plugins/platforms/windows/qwindowscontext.cpp
 @@ -204,7 +204,8 @@ QWindowsContext::~QWindowsContext()
@@ -4076,40 +3301,7 @@ index 3fe91d2935..743f27da42 100644
  }
  
  [[nodiscard]] static inline DPI_AWARENESS_CONTEXT
-@@ -410,49 +460,93 @@ QtWindows::DpiAwareness QWindowsContext::processDpiAwareness()
- QDebug operator<<(QDebug d, QtWindows::DpiAwareness dpiAwareness)
- {
-     const QDebugStateSaver saver(d);
--    d.nospace().noquote() << "QtWindows::DpiAwareness::";
-+    QString message = u"QtWindows::DpiAwareness::"_s;
-     switch (dpiAwareness) {
-     case QtWindows::DpiAwareness::Invalid:
--        d.nospace().noquote() << "Invalid";
-+        message += u"Invalid"_s;
-         break;
-     case QtWindows::DpiAwareness::Unaware:
--        d.nospace().noquote() << "Unaware";
-+        message += u"Unaware"_s;
-         break;
-     case QtWindows::DpiAwareness::System:
--        d.nospace().noquote() << "System";
-+        message += u"System"_s;
-         break;
-     case QtWindows::DpiAwareness::PerMonitor:
--        d.nospace().noquote() << "PerMonitor";
-+        message += u"PerMonitor"_s;
-         break;
-     case QtWindows::DpiAwareness::PerMonitorVersion2:
--        d.nospace().noquote() << "PerMonitorVersion2";
-+        message += u"PerMonitorVersion2"_s;
-         break;
-     case QtWindows::DpiAwareness::Unaware_GdiScaled:
--        d.nospace().noquote() << "Unaware_GdiScaled";
-+        message += u"Unaware_GdiScaled"_s;
-         break;
-     }
-+    d.nospace().noquote() << message;
-     return d;
+@@ -436,24 +486,67 @@ QDebug operator<<(QDebug d, QtWindows::DpiAwareness dpiAwareness)
  }
  #endif
  
@@ -4189,7 +3381,7 @@ index 3fe91d2935..743f27da42 100644
          return false;
      }
      QWindowsContextPrivate::m_v2DpiAware
-@@ -885,8 +979,8 @@ void QWindowsContext::forceNcCalcSize(HWND hwnd)
+@@ -886,8 +979,8 @@ void QWindowsContext::forceNcCalcSize(HWND hwnd)
  bool QWindowsContext::systemParametersInfo(unsigned action, unsigned param, void *out,
                                             unsigned dpi)
  {
@@ -4200,7 +3392,7 @@ index 3fe91d2935..743f27da42 100644
          : SystemParametersInfo(action, param, out, 0);
      return result == TRUE;
  }
-@@ -933,7 +1027,8 @@ bool QWindowsContext::shouldHaveNonClientDpiScaling(const QWindow *window)
+@@ -934,7 +1027,8 @@ bool QWindowsContext::shouldHaveNonClientDpiScaling(const QWindow *window)
      if (QWindowsContextPrivate::m_v2DpiAware)
          return true;
  
@@ -4210,7 +3402,7 @@ index 3fe91d2935..743f27da42 100644
          && !window->property(QWindowsWindow::embeddedNativeParentHandleProperty).isValid()
  #if QT_CONFIG(opengl) // /QTBUG-62901, EnableNonClientDpiScaling has problems with GL
          && (window->surfaceType() != QSurface::OpenGLSurface
-@@ -972,9 +1067,11 @@ static inline bool isInputMessage(UINT m)
+@@ -973,9 +1067,11 @@ static inline bool isInputMessage(UINT m)
  // Note: This only works within WM_NCCREATE
  static bool enableNonClientDpiScaling(HWND hwnd)
  {
@@ -4223,7 +3415,7 @@ index 3fe91d2935..743f27da42 100644
          if (!result) {
              const DWORD errorCode = GetLastError();
              qErrnoWarning(int(errorCode), "EnableNonClientDpiScaling() failed for HWND %p (%lu)",
-@@ -1596,4 +1693,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
+@@ -1596,4 +1692,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
      return false;
  }
  
@@ -4362,7 +3554,7 @@ index 3fe91d2935..743f27da42 100644
 +
  QT_END_NAMESPACE
 diff --git a/src/plugins/platforms/windows/qwindowscontext.h b/src/plugins/platforms/windows/qwindowscontext.h
-index 21e841a886..408ac39529 100644
+index 1a3b47be5e..408ac39529 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.h
 +++ b/src/plugins/platforms/windows/qwindowscontext.h
 @@ -10,13 +10,18 @@
@@ -4504,15 +3696,6 @@ index 21e841a886..408ac39529 100644
  class QWindowsContext
  {
      Q_DISABLE_COPY_MOVE(QWindowsContext)
-@@ -116,7 +234,7 @@ public:
- 
-     static void setTabletAbsoluteRange(int a);
- 
--    bool setProcessDpiAwareness(QtWindows::DpiAwareness dpiAwareness);
-+    static bool setProcessDpiAwareness(QtWindows::DpiAwareness dpiAwareness);
-     static QtWindows::DpiAwareness processDpiAwareness();
-     static QtWindows::DpiAwareness windowDpiAwareness(HWND hwnd);
- 
 @@ -159,6 +277,18 @@ public:
      static bool filterNativeEvent(MSG *msg, LRESULT *result);
      static bool filterNativeEvent(QWindow *window, MSG *msg, LRESULT *result);
@@ -4533,10 +3716,10 @@ index 21e841a886..408ac39529 100644
      void handleFocusEvent(QtWindows::WindowsEventType et, QWindowsWindow *w);
  #ifndef QT_NO_CONTEXTMENU
 diff --git a/src/plugins/platforms/windows/qwindowsdrag.cpp b/src/plugins/platforms/windows/qwindowsdrag.cpp
-index 93205259f8..9f5f73588c 100644
+index 48e0bba41f..fe36b00cf4 100644
 --- a/src/plugins/platforms/windows/qwindowsdrag.cpp
 +++ b/src/plugins/platforms/windows/qwindowsdrag.cpp
-@@ -664,12 +664,13 @@ static HRESULT startDoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSource,
+@@ -665,12 +665,13 @@ static HRESULT startDoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSource,
                  return ::DoDragDrop(pDataObj, pDropSource, dwOKEffects, pdwEffect);
              }
  
@@ -4552,7 +3735,7 @@ index 93205259f8..9f5f73588c 100644
                      return E_FAIL;
  
                  if (pointerInfo.pointerFlags & POINTER_FLAG_PRIMARY) {
-@@ -713,7 +714,7 @@ static HRESULT startDoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSource,
+@@ -714,7 +715,7 @@ static HRESULT startDoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSource,
                  // Handle other messages.
                  qWindowsWndProc(msg.hwnd, msg.message, msg.wParam, msg.lParam);
  
@@ -4562,10 +3745,10 @@ index 93205259f8..9f5f73588c 100644
              }
          } else {
 diff --git a/src/plugins/platforms/windows/qwindowsintegration.cpp b/src/plugins/platforms/windows/qwindowsintegration.cpp
-index 073c67effe..282d5c8af7 100644
+index 628b2f3209..24a7f0a60e 100644
 --- a/src/plugins/platforms/windows/qwindowsintegration.cpp
 +++ b/src/plugins/platforms/windows/qwindowsintegration.cpp
-@@ -230,8 +230,12 @@ void QWindowsIntegrationPrivate::parseOptions(QWindowsIntegration *q, const QStr
+@@ -222,8 +222,12 @@ void QWindowsIntegrationPrivate::parseOptions(QWindowsIntegration *q, const QStr
      initOpenGlBlacklistResources();
  
      static bool dpiAwarenessSet = false;
@@ -4579,7 +3762,7 @@ index 073c67effe..282d5c8af7 100644
  
      int tabletAbsoluteRange = -1;
      DarkModeHandling darkModeHandling = DarkModeHandlingFlag::DarkModeWindowFrames
-@@ -250,7 +254,11 @@ void QWindowsIntegrationPrivate::parseOptions(QWindowsIntegration *q, const QStr
+@@ -242,7 +246,11 @@ void QWindowsIntegrationPrivate::parseOptions(QWindowsIntegration *q, const QStr
  
      if (!dpiAwarenessSet) { // Set only once in case of repeated instantiations of QGuiApplication.
          if (!QCoreApplication::testAttribute(Qt::AA_PluginApplication)) {
@@ -4593,7 +3776,7 @@ index 073c67effe..282d5c8af7 100644
                  << "effective process DPI awareness=" << QWindowsContext::processDpiAwareness();
          }
 diff --git a/src/plugins/platforms/windows/qwindowskeymapper.cpp b/src/plugins/platforms/windows/qwindowskeymapper.cpp
-index 8f0607d23c..37dc35e81d 100644
+index 3089e745d4..fa961110d7 100644
 --- a/src/plugins/platforms/windows/qwindowskeymapper.cpp
 +++ b/src/plugins/platforms/windows/qwindowskeymapper.cpp
 @@ -749,21 +749,10 @@ static inline QString messageKeyText(const MSG &msg)
@@ -4631,10 +3814,10 @@ index 8f0607d23c..37dc35e81d 100644
                                 TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY | TPM_RETURNCMD,
                                 pos.x(), pos.y() + titleBarOffset,
 diff --git a/src/plugins/platforms/windows/qwindowsmousehandler.cpp b/src/plugins/platforms/windows/qwindowsmousehandler.cpp
-index 8d57e75c96..ea252c9811 100644
+index ceb33f6141..1e8188ba18 100644
 --- a/src/plugins/platforms/windows/qwindowsmousehandler.cpp
 +++ b/src/plugins/platforms/windows/qwindowsmousehandler.cpp
-@@ -566,6 +566,11 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -565,6 +565,11 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
      using QTouchPoint = QWindowSystemInterface::TouchPoint;
      using QTouchPointList = QList<QWindowSystemInterface::TouchPoint>;
  
@@ -4646,7 +3829,7 @@ index 8d57e75c96..ea252c9811 100644
      if (!QWindowsContext::instance()->initTouch()) {
          qWarning("Unable to initialize touch handling.");
          return true;
-@@ -585,7 +590,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -584,7 +589,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
      touchPoints.reserve(winTouchPointCount);
      QEventPoint::States allStates;
  
@@ -4655,7 +3838,7 @@ index 8d57e75c96..ea252c9811 100644
                        UINT(msg.wParam), winTouchInputs.get(), sizeof(TOUCHINPUT));
      for (int i = 0; i < winTouchPointCount; ++i) {
          const TOUCHINPUT &winTouchInput = winTouchInputs[i];
-@@ -627,7 +632,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -626,7 +631,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
          touchPoints.append(touchPoint);
      }
  
@@ -4682,7 +3865,7 @@ index 6a790bcc1b..b03bcc1bf5 100644
  
  QDirect3D9Handle::~QDirect3D9Handle()
 diff --git a/src/plugins/platforms/windows/qwindowspointerhandler.cpp b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
-index e2bf98dc38..b2607c3f3c 100644
+index 88f02347b3..75226c3810 100644
 --- a/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 +++ b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 @@ -45,10 +45,13 @@ QWindowsPointerHandler::~QWindowsPointerHandler()
@@ -4780,10 +3963,10 @@ index e2bf98dc38..b2607c3f3c 100644
  
      const auto systemId = (qint64)penInfo->pointerInfo.sourceDevice;
 diff --git a/src/plugins/platforms/windows/qwindowsscreen.cpp b/src/plugins/platforms/windows/qwindowsscreen.cpp
-index f15a7a870d..a513ec937d 100644
+index 5414fc2778..7428e7a347 100644
 --- a/src/plugins/platforms/windows/qwindowsscreen.cpp
 +++ b/src/plugins/platforms/windows/qwindowsscreen.cpp
-@@ -26,22 +26,14 @@ QT_BEGIN_NAMESPACE
+@@ -28,22 +28,14 @@ QT_BEGIN_NAMESPACE
  
  using namespace Qt::StringLiterals;
  
@@ -4812,7 +3995,7 @@ index f15a7a870d..a513ec937d 100644
      // We might want to consider storing adapterId/id from DISPLAYCONFIG_PATH_TARGET_INFO.
      std::vector<DISPLAYCONFIG_PATH_INFO> pathInfos;
      std::vector<DISPLAYCONFIG_MODE_INFO> modeInfos;
-@@ -54,14 +46,15 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
+@@ -56,14 +48,15 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
          // QueryDisplayConfig documentation doesn't say the number of needed elements is updated
          // when the call fails with ERROR_INSUFFICIENT_BUFFER, so we need a separate call to
          // look up the needed buffer sizes.
@@ -4832,7 +4015,7 @@ index f15a7a870d..a513ec937d 100644
      } while (result == ERROR_INSUFFICIENT_BUFFER);
  
      if (result != ERROR_SUCCESS)
-@@ -74,7 +67,7 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
+@@ -76,7 +69,7 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
          deviceName.header.size = sizeof(DISPLAYCONFIG_SOURCE_DEVICE_NAME);
          deviceName.header.adapterId = pathInfos[p].sourceInfo.adapterId;
          deviceName.header.id = pathInfos[p].sourceInfo.id;
@@ -4841,7 +4024,7 @@ index f15a7a870d..a513ec937d 100644
              if (wcscmp(viewInfo.szDevice, deviceName.viewGdiDeviceName) == 0) {
                  *pathInfo = pathInfos[p];
                  return true;
-@@ -89,8 +82,9 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
+@@ -91,8 +84,9 @@ static bool getPathInfo(const MONITORINFOEX &viewInfo, DISPLAYCONFIG_PATH_INFO *
  // Needed later for HDR support
  static float getMonitorSDRWhiteLevel(DISPLAYCONFIG_PATH_TARGET_INFO *targetInfo)
  {
@@ -4853,7 +4036,7 @@ index f15a7a870d..a513ec937d 100644
          return defaultSdrWhiteLevel;
  
      DISPLAYCONFIG_SDR_WHITE_LEVEL whiteLevel = {};
-@@ -98,7 +92,7 @@ static float getMonitorSDRWhiteLevel(DISPLAYCONFIG_PATH_TARGET_INFO *targetInfo)
+@@ -100,7 +94,7 @@ static float getMonitorSDRWhiteLevel(DISPLAYCONFIG_PATH_TARGET_INFO *targetInfo)
      whiteLevel.header.size = sizeof(DISPLAYCONFIG_SDR_WHITE_LEVEL);
      whiteLevel.header.adapterId = targetInfo->adapterId;
      whiteLevel.header.id = targetInfo->id;
@@ -4862,7 +4045,7 @@ index f15a7a870d..a513ec937d 100644
          return defaultSdrWhiteLevel;
      return whiteLevel.SDRWhiteLevel * 80.0 / 1000.0;
  }
-@@ -126,7 +120,7 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
+@@ -128,7 +122,7 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
          deviceName.header.size = sizeof(DISPLAYCONFIG_TARGET_DEVICE_NAME);
          deviceName.header.adapterId = pathInfo.targetInfo.adapterId;
          deviceName.header.id = pathInfo.targetInfo.id;
@@ -4871,7 +4054,7 @@ index f15a7a870d..a513ec937d 100644
              data->name = QString::fromWCharArray(deviceName.monitorFriendlyDeviceName);
      }
      if (data->name.isEmpty())
-@@ -135,8 +129,8 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
+@@ -137,8 +131,8 @@ static bool monitorData(HMONITOR hMonitor, QWindowsScreenData *data)
          data->flags |= QWindowsScreenData::LockScreen;
      } else {
          if (const HDC hdc = CreateDC(info.szDevice, nullptr, nullptr, nullptr)) {
@@ -4969,7 +4152,7 @@ index 3bad237f9e..7a9b2c5b07 100644
  
      QWindowsHwndSystemTrayIconEntry entry{m_hwnd, this};
 diff --git a/src/plugins/platforms/windows/qwindowstheme.cpp b/src/plugins/platforms/windows/qwindowstheme.cpp
-index 7535c7a583..f62881fe28 100644
+index 6fba9e55c1..64b38c594a 100644
 --- a/src/plugins/platforms/windows/qwindowstheme.cpp
 +++ b/src/plugins/platforms/windows/qwindowstheme.cpp
 @@ -39,6 +39,7 @@
@@ -4980,7 +4163,25 @@ index 7535c7a583..f62881fe28 100644
  
  #include <algorithm>
  
-@@ -234,41 +235,62 @@ static void populateLightSystemBasePalette(QPalette &result)
+@@ -232,11 +233,12 @@ void QWindowsTheme::populateLightSystemBasePalette(QPalette &result)
+     QColor accent = getSysColor(COLOR_HIGHLIGHT);
+ 
+ #if QT_CONFIG(cpp_winrt)
+-    // respect the Windows 11 accent color
+-    using namespace winrt::Windows::UI::ViewManagement;
+-    const auto settings = UISettings();
+-
+-    accent = getSysColor(settings.GetColorValue(UIColorType::Accent));
++    if (QOperatingSystemVersion::isWin10RS5OrGreater()) {
++        // respect the Windows 11 accent color
++        using namespace winrt::Windows::UI::ViewManagement;
++        const auto settings = UISettings();
++        accent = getSysColor(settings.GetColorValue(UIColorType::Accent));
++    }
+ #endif
+ 
+     const QColor btnFace = background;
+@@ -271,41 +273,62 @@ void QWindowsTheme::populateLightSystemBasePalette(QPalette &result)
  
  static void populateDarkSystemBasePalette(QPalette &result)
  {
@@ -5076,7 +4277,7 @@ index 7535c7a583..f62881fe28 100644
      const QColor buttonColor = background.lighter(200);
  
      result.setColor(QPalette::All, QPalette::WindowText, foreground);
-@@ -524,25 +546,31 @@ void QWindowsTheme::refreshPalettes()
+@@ -561,25 +584,31 @@ void QWindowsTheme::refreshPalettes()
      m_palettes[MenuPalette] = new QPalette(menuPalette(*m_palettes[SystemPalette], light));
      m_palettes[MenuBarPalette] = menuBarPalette(*m_palettes[MenuPalette], light);
      if (!light) {
@@ -5125,7 +4326,7 @@ index 7535c7a583..f62881fe28 100644
          m_palettes[RadioButtonPalette] = new QPalette(*m_palettes[CheckBoxPalette]);
      }
  }
-@@ -600,7 +628,10 @@ void QWindowsTheme::refreshFonts()
+@@ -637,7 +666,10 @@ void QWindowsTheme::refreshFonts()
      fixedFont.setStyleHint(QFont::TypeWriter);
  
      LOGFONT lfIconTitleFont;
@@ -5137,7 +4338,7 @@ index 7535c7a583..f62881fe28 100644
      const QFont iconTitleFont = QWindowsFontDatabase::LOGFONT_to_QFont(lfIconTitleFont, dpi);
  
      m_fonts[SystemFont] = new QFont(QWindowsFontDatabase::systemDefaultFont());
-@@ -1033,7 +1064,7 @@ bool QWindowsTheme::useNativeMenus()
+@@ -1070,7 +1102,7 @@ bool QWindowsTheme::useNativeMenus()
  
  bool QWindowsTheme::queryDarkMode()
  {
@@ -5147,7 +4348,7 @@ index 7535c7a583..f62881fe28 100644
      }
      const auto setting = QWinRegistryKey(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Themes\Personalize)")
 diff --git a/src/plugins/platforms/windows/qwindowswindow.cpp b/src/plugins/platforms/windows/qwindowswindow.cpp
-index 79978b3314..a3d6711ba6 100644
+index 6fcc226abc..2c529002d3 100644
 --- a/src/plugins/platforms/windows/qwindowswindow.cpp
 +++ b/src/plugins/platforms/windows/qwindowswindow.cpp
 @@ -22,6 +22,7 @@
@@ -5319,7 +4520,7 @@ index 79978b3314..a3d6711ba6 100644
              exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
      }
  }
-@@ -1043,9 +1084,12 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, DWORD style, DWORD exStyl
+@@ -1045,9 +1086,12 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, DWORD style, DWORD exStyl
  {
      if (!w->isTopLevel() || w->flags().testFlag(Qt::FramelessWindowHint))
          return {};
@@ -5333,7 +4534,7 @@ index 79978b3314..a3d6711ba6 100644
          qErrnoWarning("%s: AdjustWindowRectExForDpi failed", __FUNCTION__);
      }
      const QMargins result(qAbs(rect.left), qAbs(rect.top),
-@@ -1085,7 +1129,8 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, const QRect &geometry,
+@@ -1087,7 +1131,8 @@ QMargins QWindowsGeometryHint::frame(const QWindow *w, const QRect &geometry,
  {
      if (!w->isTopLevel() || w->flags().testFlag(Qt::FramelessWindowHint))
          return {};
@@ -5343,7 +4544,7 @@ index 79978b3314..a3d6711ba6 100644
          || !QWindowsContext::shouldHaveNonClientDpiScaling(w)) {
          return frameOnPrimaryScreen(w, style, exStyle);
      }
-@@ -1240,10 +1285,12 @@ QMargins QWindowsBaseWindow::frameMargins_sys() const
+@@ -1242,10 +1287,12 @@ QMargins QWindowsBaseWindow::frameMargins_sys() const
  std::optional<QWindowsBaseWindow::TouchWindowTouchTypes>
      QWindowsBaseWindow::touchWindowTouchTypes_sys() const
  {
@@ -5359,7 +4560,7 @@ index 79978b3314..a3d6711ba6 100644
      if ((touchFlags & TWF_FINETOUCH) != 0)
          result.setFlag(TouchWindowTouchType::FineTouch);
      if ((touchFlags & TWF_WANTPALM) != 0)
-@@ -1511,8 +1558,8 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const QWindowsWindowData &data)
+@@ -1513,8 +1560,8 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const QWindowsWindowData &data)
  QWindowsWindow::~QWindowsWindow()
  {
      setFlag(WithinDestroy);
@@ -5370,7 +4571,7 @@ index 79978b3314..a3d6711ba6 100644
      destroyWindow();
      destroyIcon();
  }
-@@ -1539,7 +1586,7 @@ void QWindowsWindow::initialize()
+@@ -1541,7 +1588,7 @@ void QWindowsWindow::initialize()
              QWindowSystemInterface::handleGeometryChange<QWindowSystemInterface::SynchronousDelivery>(w, obtainedGeometry);
          }
      }
@@ -5379,7 +4580,7 @@ index 79978b3314..a3d6711ba6 100644
  }
  
  QSurfaceFormat QWindowsWindow::format() const
-@@ -2013,7 +2060,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
+@@ -2015,7 +2062,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
  
  void QWindowsWindow::handleDpiChangedAfterParent(HWND hwnd)
  {
@@ -5388,7 +4589,7 @@ index 79978b3314..a3d6711ba6 100644
      const qreal scale = qreal(dpi) / qreal(savedDpi());
      setSavedDpi(dpi);
  
-@@ -2333,13 +2380,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
+@@ -2335,13 +2382,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
          return false;
      PAINTSTRUCT ps;
  
@@ -5413,7 +4614,7 @@ index 79978b3314..a3d6711ba6 100644
      // If the a window is obscured by another window (such as a child window)
      // we still need to send isExposed=true, for compatibility.
      // Our tests depend on it.
-@@ -2934,7 +2990,7 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
+@@ -2971,7 +3027,7 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
              mmi->ptMaxPosition.x = availablePositionDiff.x();
              mmi->ptMaxPosition.y = availablePositionDiff.y();
              if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
@@ -5422,7 +4623,7 @@ index 79978b3314..a3d6711ba6 100644
                  mmi->ptMaxSize.x += borderWidth * 2;
                  mmi->ptMaxSize.y += borderWidth * 2;
                  mmi->ptMaxTrackSize = mmi->ptMaxSize;
-@@ -2975,7 +3031,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
+@@ -3012,7 +3068,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
              return true;
          }
          if (localPos.y() < 0) {
@@ -5431,7 +4632,7 @@ index 79978b3314..a3d6711ba6 100644
              if (localPos.y() < topResizeBarPos) {
                  *result = HTCAPTION; // Extend caption over top resize bar, let's user move the window.
                  return true;
-@@ -3165,10 +3221,12 @@ enum : WORD {
+@@ -3202,10 +3258,12 @@ enum : WORD {
  
  static bool queryDarkBorder(HWND hwnd)
  {
@@ -5446,7 +4647,7 @@ index 79978b3314..a3d6711ba6 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to retrieve dark window border setting.", __FUNCTION__);
      return result == TRUE;
-@@ -3176,10 +3234,12 @@ static bool queryDarkBorder(HWND hwnd)
+@@ -3213,10 +3271,12 @@ static bool queryDarkBorder(HWND hwnd)
  
  bool QWindowsWindow::setDarkBorderToWindow(HWND hwnd, bool d)
  {
@@ -5461,7 +4662,7 @@ index 79978b3314..a3d6711ba6 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to set %s window border.", __FUNCTION__, d ? "dark" : "light");
      return ok;
-@@ -3300,6 +3360,9 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3337,6 +3397,9 @@ void QWindowsWindow::registerTouchWindow()
      if ((QWindowsContext::instance()->systemInfo() & QWindowsContext::SI_SupportsTouch) == 0)
          return;
  
@@ -5471,7 +4672,7 @@ index 79978b3314..a3d6711ba6 100644
      // Initially register or re-register to change the flags
      const auto touchTypes = QWindowsIntegration::instance()->touchWindowTouchType();
      if (testFlag(TouchRegistered)) {
-@@ -3313,7 +3376,7 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3350,7 +3413,7 @@ void QWindowsWindow::registerTouchWindow()
          touchFlags |= TWF_FINETOUCH;
      if (touchTypes.testFlag(TouchWindowTouchType::WantPalmTouch))
          touchFlags |= TWF_WANTPALM;
@@ -5693,7 +4894,7 @@ index 8fe8b1c6d7..07367efe01 100644
  QT_BEGIN_NAMESPACE
  
 diff --git a/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp b/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
-index fc612c82e5..2cebbbb025 100644
+index 4ae2adde35..d25241bd66 100644
 --- a/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
 +++ b/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
 @@ -3945,6 +3945,21 @@ void QWindowsVistaStyle::drawComplexControl(ComplexControl control, const QStyle
@@ -5718,7 +4919,7 @@ index fc612c82e5..2cebbbb025 100644
                  }
              }
          }
-@@ -5000,4 +5015,20 @@ QIcon QWindowsVistaStyle::standardIcon(StandardPixmap standardIcon,
+@@ -5035,4 +5050,20 @@ QIcon QWindowsVistaStyle::standardIcon(StandardPixmap standardIcon,
      return QWindowsStyle::standardIcon(standardIcon, option, widget);
  }
  
@@ -5817,10 +5018,10 @@ index e461ab6294..e6e6cd433b 100644
      case Python_Code:
          writeString("qt_resource_struct = b\"\\\n");
 diff --git a/src/widgets/CMakeLists.txt b/src/widgets/CMakeLists.txt
-index d0c0790921..ab252cada7 100644
+index 417f6a2d8e..bc783425ea 100644
 --- a/src/widgets/CMakeLists.txt
 +++ b/src/widgets/CMakeLists.txt
-@@ -323,7 +323,6 @@ qt_internal_extend_target(Widgets CONDITION MACOS
+@@ -322,7 +322,6 @@ qt_internal_extend_target(Widgets CONDITION MACOS
  
  qt_internal_extend_target(Widgets CONDITION WIN32
      LIBRARIES
@@ -5829,10 +5030,10 @@ index d0c0790921..ab252cada7 100644
          uxtheme
  )
 diff --git a/src/widgets/dialogs/qwizard.cpp b/src/widgets/dialogs/qwizard.cpp
-index cd41efa313..7cb2831411 100644
+index d6287717d9..a24b3acf52 100644
 --- a/src/widgets/dialogs/qwizard.cpp
 +++ b/src/widgets/dialogs/qwizard.cpp
-@@ -328,7 +328,8 @@ void QWizardHeader::setup(const QWizardLayoutInfo &info, const QString &title,
+@@ -327,7 +327,8 @@ void QWizardHeader::setup(const QWizardLayoutInfo &info, const QString &title,
  {
      bool modern = ((info.wizStyle == QWizard::ModernStyle)
  #if QT_CONFIG(style_windowsvista)
@@ -5842,7 +5043,7 @@ index cd41efa313..7cb2831411 100644
  #endif
      );
  
-@@ -534,6 +535,7 @@ public:
+@@ -533,6 +534,7 @@ public:
      void updatePixmap(QWizard::WizardPixmap which);
  #if QT_CONFIG(style_windowsvista)
      bool vistaDisabled() const;
@@ -5850,7 +5051,7 @@ index cd41efa313..7cb2831411 100644
      bool handleAeroStyleChange();
  #endif
      bool isVistaThemeEnabled() const;
-@@ -602,7 +604,7 @@ public:
+@@ -601,7 +603,7 @@ public:
      QPointer<QShortcut> vistaNextShortcut;
  #  endif
      bool vistaInitPending = true;
@@ -5859,7 +5060,7 @@ index cd41efa313..7cb2831411 100644
      bool vistaStateChanged = false;
      bool inHandleAeroStyleChange = false;
  #endif
-@@ -886,7 +888,7 @@ QWizardLayoutInfo QWizardPrivate::layoutInfoForCurrentPage()
+@@ -885,7 +887,7 @@ QWizardLayoutInfo QWizardPrivate::layoutInfoForCurrentPage()
      info.wizStyle = wizStyle;
      if (info.wizStyle == QWizard::AeroStyle
  #if QT_CONFIG(style_windowsvista)
@@ -5868,7 +5069,7 @@ index cd41efa313..7cb2831411 100644
  #endif
          )
          info.wizStyle = QWizard::ModernStyle;
-@@ -1518,6 +1520,13 @@ bool QWizardPrivate::vistaDisabled() const
+@@ -1517,6 +1519,13 @@ bool QWizardPrivate::vistaDisabled() const
      return v.isValid() && v.toBool();
  }
  
@@ -5882,7 +5083,7 @@ index cd41efa313..7cb2831411 100644
  bool QWizardPrivate::handleAeroStyleChange()
  {
      Q_Q(QWizard);
-@@ -1541,17 +1550,25 @@ bool QWizardPrivate::handleAeroStyleChange()
+@@ -1540,17 +1549,25 @@ bool QWizardPrivate::handleAeroStyleChange()
      if (isVistaThemeEnabled()) {
          const int topOffset = vistaHelper->topOffset(q);
          const int topPadding = vistaHelper->topPadding(q);
@@ -5918,7 +5119,7 @@ index cd41efa313..7cb2831411 100644
          if (isWindow)
              vistaHelper->setTitleBarIconAndCaptionVisible(false);
          QObject::connect(
-@@ -1580,7 +1597,8 @@ bool QWizardPrivate::handleAeroStyleChange()
+@@ -1579,7 +1596,8 @@ bool QWizardPrivate::handleAeroStyleChange()
  bool QWizardPrivate::isVistaThemeEnabled() const
  {
  #if QT_CONFIG(style_windowsvista)
@@ -5928,7 +5129,7 @@ index cd41efa313..7cb2831411 100644
  #else
      return false;
  #endif
-@@ -1737,6 +1755,13 @@ void QWizardAntiFlickerWidget::paintEvent(QPaintEvent *)
+@@ -1732,6 +1750,13 @@ void QWizardAntiFlickerWidget::paintEvent(QPaintEvent *)
          painter.fillRect(0, buttonLayoutTop, width(), height() - buttonLayoutTop, brush);
          painter.setPen(QPen(QBrush(QColor(223, 223, 223)), 0)); // ### hardcoded for now
          painter.drawLine(0, buttonLayoutTop, width(), buttonLayoutTop);
@@ -5942,7 +5143,7 @@ index cd41efa313..7cb2831411 100644
      }
  }
  #endif
-@@ -3146,7 +3171,12 @@ bool QWizard::event(QEvent *event)
+@@ -3141,7 +3166,12 @@ bool QWizard::event(QEvent *event)
  #if QT_CONFIG(style_windowsvista)
      else if (event->type() == QEvent::Show && d->vistaInitPending) {
          d->vistaInitPending = false;
@@ -5956,7 +5157,7 @@ index cd41efa313..7cb2831411 100644
          d->handleAeroStyleChange();
      }
      else if (d->isVistaThemeEnabled()) {
-@@ -3176,7 +3206,8 @@ void QWizard::resizeEvent(QResizeEvent *event)
+@@ -3171,7 +3201,8 @@ void QWizard::resizeEvent(QResizeEvent *event)
  #if QT_CONFIG(style_windowsvista)
      if (d->isVistaThemeEnabled()) {
          heightOffset = d->vistaHelper->topOffset(this);
@@ -5966,7 +5167,7 @@ index cd41efa313..7cb2831411 100644
      }
  #endif
      d->antiFlickerWidget->resize(event->size().width(), event->size().height() - heightOffset);
-@@ -3203,6 +3234,11 @@ void QWizard::paintEvent(QPaintEvent * event)
+@@ -3198,6 +3229,11 @@ void QWizard::paintEvent(QPaintEvent * event)
      }
  #if QT_CONFIG(style_windowsvista)
      else if (d->isVistaThemeEnabled()) {
@@ -5978,7 +5179,7 @@ index cd41efa313..7cb2831411 100644
          d->vistaHelper->paintEvent(event);
      }
  #else
-@@ -3221,12 +3257,12 @@ bool QWizard::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
+@@ -3216,12 +3252,12 @@ bool QWizard::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
      if (d->isVistaThemeEnabled() && eventType == "windows_generic_MSG") {
          MSG *windowsMessage = static_cast<MSG *>(message);
          const bool winEventResult = d->vistaHelper->handleWinEvent(windowsMessage, result);
@@ -6446,5 +5647,5 @@ index 45f26a1ebf..71dfc15b4d 100644
      QPoint pressedPos;
      bool pressed;
 -- 
-2.39.1.windows.1
+2.39.2.windows.1
 

@@ -1,4 +1,4 @@
-From ab676138e5aae801b51182c50ef35711f914aba1 Mon Sep 17 00:00:00 2001
+From 28e18e518ac41bdf412c5f6bcaac58824b7e9fdd Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Sun, 19 Jun 2022 13:06:56 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -11,9 +11,9 @@ Import changes list:
 
 Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 ---
- ports/ffmpeg/portfile.cmake                      | 6 +++---
+ ports/ffmpeg/portfile.cmake                      | 2 +-
  scripts/toolchains/windows.cmake                 | 8 ++++----
- triplets/arm-uwp.cmake                           | 2 +-
+ triplets/arm-uwp.cmake                           | 1 +
  triplets/arm64-windows.cmake                     | 1 +
  triplets/community/arm-android.cmake             | 2 ++
  triplets/community/arm-ios.cmake                 | 2 ++
@@ -22,7 +22,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  triplets/community/arm-mingw-static.cmake        | 1 +
  triplets/community/arm-neon-android.cmake        | 2 ++
  triplets/community/arm-windows-static.cmake      | 1 +
- triplets/community/arm-windows.cmake             | 3 +--
+ triplets/community/arm-windows.cmake             | 1 +
  triplets/community/arm64-android.cmake           | 2 ++
  triplets/community/arm64-ios.cmake               | 2 ++
  triplets/community/arm64-linux.cmake             | 1 +
@@ -38,7 +38,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  triplets/community/s390x-linux.cmake             | 1 +
  triplets/community/wasm32-emscripten.cmake       | 2 ++
  triplets/community/x64-android.cmake             | 2 ++
- triplets/community/x64-freebsd.cmake             | 2 +-
+ triplets/community/x64-freebsd.cmake             | 1 +
  triplets/community/x64-ios.cmake                 | 2 ++
  triplets/community/x64-linux-dynamic.cmake       | 1 +
  triplets/community/x64-linux-release.cmake       | 6 ------
@@ -50,61 +50,43 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  triplets/community/x64-windows-release.cmake     | 4 ----
  triplets/community/x64-windows-static-md.cmake   | 1 +
  triplets/community/x86-android.cmake             | 2 ++
- triplets/community/x86-freebsd.cmake             | 2 +-
+ triplets/community/x86-freebsd.cmake             | 1 +
  triplets/community/x86-ios.cmake                 | 2 ++
  triplets/community/x86-mingw-dynamic.cmake       | 3 ++-
  triplets/community/x86-mingw-static.cmake        | 1 +
  triplets/community/x86-uwp.cmake                 | 1 +
  triplets/community/x86-windows-static-md.cmake   | 1 +
  triplets/community/x86-windows-static.cmake      | 3 ++-
- triplets/community/x86-windows-v120.cmake        | 4 +++-
- triplets/x64-linux.cmake                         | 2 +-
- triplets/x64-osx.cmake                           | 2 +-
- triplets/x64-uwp.cmake                           | 2 +-
+ triplets/community/x86-windows-v120.cmake        | 2 ++
+ triplets/x64-linux.cmake                         | 1 +
+ triplets/x64-osx.cmake                           | 1 +
+ triplets/x64-uwp.cmake                           | 1 +
  triplets/x64-windows-static.cmake                | 2 +-
  triplets/x64-windows.cmake                       | 2 +-
  triplets/x86-windows.cmake                       | 2 +-
- 53 files changed, 72 insertions(+), 41 deletions(-)
+ 53 files changed, 69 insertions(+), 30 deletions(-)
  delete mode 100644 triplets/community/x64-linux-release.cmake
  delete mode 100644 triplets/community/x64-osx-release.cmake
  delete mode 100644 triplets/community/x64-windows-release.cmake
 
 diff --git a/ports/ffmpeg/portfile.cmake b/ports/ffmpeg/portfile.cmake
-index 98fc5c9d6..61996520e 100644
+index b7178acdc..2697d7bd0 100644
 --- a/ports/ffmpeg/portfile.cmake
 +++ b/ports/ffmpeg/portfile.cmake
-@@ -53,7 +53,7 @@ else()
+@@ -42,7 +42,7 @@ else()
      set(LIB_PATH_VAR "LIBRARY_PATH")
  endif()
  
--set(OPTIONS "--enable-pic --disable-doc --enable-debug --enable-runtime-cpudetect")
-+set(OPTIONS "--enable-pic --disable-doc --enable-runtime-cpudetect")
+-set(OPTIONS "--enable-pic --disable-doc --enable-debug --enable-runtime-cpudetect --disable-autodetect")
++set(OPTIONS "--enable-pic --disable-doc --enable-runtime-cpudetect --disable-autodetect")
  
- if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm")
-   set(OPTIONS "${OPTIONS} --disable-asm --disable-x86asm")
-@@ -449,7 +449,7 @@ else()
- endif()
- 
- if ("qsv" IN_LIST FEATURES)
--    set(OPTIONS "${OPTIONS} --enable-libmfx --enable-encoder=h264_qsv --enable-decoder=h264_qsv")   
-+    set(OPTIONS "${OPTIONS} --enable-libmfx --enable-encoder=h264_qsv --enable-decoder=h264_qsv")
- endif()
- 
- if (VCPKG_TARGET_IS_OSX)
-@@ -491,7 +491,7 @@ if(VCPKG_TARGET_IS_UWP)
- endif()
- 
- # Note: --disable-optimizations can't be used due to https://ffmpeg.org/pipermail/libav-user/2013-March/003945.html
--set(OPTIONS_DEBUG "--debug")
-+set(OPTIONS_DEBUG "--enable-debug --debug")
- set(OPTIONS_RELEASE "")
- 
- set(OPTIONS "${OPTIONS} ${OPTIONS_CROSS}")
+ if(VCPKG_TARGET_IS_WINDOWS)
+     vcpkg_acquire_msys(MSYS_ROOT PACKAGES automake1.16)
 diff --git a/scripts/toolchains/windows.cmake b/scripts/toolchains/windows.cmake
-index 7c8a54989..23496304f 100644
+index 03a142bab..6bc22671e 100644
 --- a/scripts/toolchains/windows.cmake
 +++ b/scripts/toolchains/windows.cmake
-@@ -57,10 +57,10 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
+@@ -62,10 +62,10 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
  
      unset(CHARSET_FLAG)
  
@@ -120,10 +102,10 @@ index 7c8a54989..23496304f 100644
      string(APPEND CMAKE_STATIC_LINKER_FLAGS_RELEASE_INIT " /nologo ")
      set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
 diff --git a/triplets/arm-uwp.cmake b/triplets/arm-uwp.cmake
-index d632c2211..cb1c3e72c 100644
+index d632c2211..d233bb250 100644
 --- a/triplets/arm-uwp.cmake
 +++ b/triplets/arm-uwp.cmake
-@@ -1,7 +1,7 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE dynamic)
@@ -131,7 +113,6 @@ index d632c2211..cb1c3e72c 100644
  
  set(VCPKG_CMAKE_SYSTEM_NAME WindowsStore)
  set(VCPKG_CMAKE_SYSTEM_VERSION 10.0)
--
 diff --git a/triplets/arm64-windows.cmake b/triplets/arm64-windows.cmake
 index 8769e975d..1220465c9 100644
 --- a/triplets/arm64-windows.cmake
@@ -165,17 +146,16 @@ index 7fee3751d..e3b5fe327 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME iOS)
 diff --git a/triplets/community/arm-linux.cmake b/triplets/community/arm-linux.cmake
-index 6f69da83b..f777daf88 100644
+index 931d1ad5e..490455fb1 100644
 --- a/triplets/community/arm-linux.cmake
 +++ b/triplets/community/arm-linux.cmake
-@@ -1,6 +1,7 @@
+@@ -1,5 +1,6 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
  
  set(VCPKG_CMAKE_SYSTEM_NAME Linux)
- 
 diff --git a/triplets/community/arm-mingw-dynamic.cmake b/triplets/community/arm-mingw-dynamic.cmake
 index b23870c11..338b2256d 100644
 --- a/triplets/community/arm-mingw-dynamic.cmake
@@ -224,16 +204,16 @@ index 9ba5feed7..d38cc524f 100644
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
 diff --git a/triplets/community/arm-windows.cmake b/triplets/community/arm-windows.cmake
-index 3aa75933f..4ac56c015 100644
+index 3aa75933f..ebd6c9443 100644
 --- a/triplets/community/arm-windows.cmake
 +++ b/triplets/community/arm-windows.cmake
-@@ -1,5 +1,4 @@
+@@ -1,5 +1,6 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE dynamic)
--
--
 +set(VCPKG_BUILD_TYPE release)
+ 
+ 
 diff --git a/triplets/community/arm64-android.cmake b/triplets/community/arm64-android.cmake
 index 46ad5f166..9a5f75e9b 100644
 --- a/triplets/community/arm64-android.cmake
@@ -258,17 +238,16 @@ index c632e9381..e9800ae14 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME iOS)
 diff --git a/triplets/community/arm64-linux.cmake b/triplets/community/arm64-linux.cmake
-index 5faf2f0a0..17cac65fa 100644
+index 07452e099..2b1ef90a6 100644
 --- a/triplets/community/arm64-linux.cmake
 +++ b/triplets/community/arm64-linux.cmake
-@@ -1,6 +1,7 @@
+@@ -1,5 +1,6 @@
  set(VCPKG_TARGET_ARCHITECTURE arm64)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
  
  set(VCPKG_CMAKE_SYSTEM_NAME Linux)
- 
 diff --git a/triplets/community/arm64-mingw-dynamic.cmake b/triplets/community/arm64-mingw-dynamic.cmake
 index 30ed204ed..e9b43ad5d 100644
 --- a/triplets/community/arm64-mingw-dynamic.cmake
@@ -406,17 +385,17 @@ index 7ef27c2b8..753ff1606 100644
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=x86_64-linux-android")
 diff --git a/triplets/community/x64-freebsd.cmake b/triplets/community/x64-freebsd.cmake
-index 035c5e86a..4eb4973e1 100644
+index 035c5e86a..812f424bf 100644
 --- a/triplets/community/x64-freebsd.cmake
 +++ b/triplets/community/x64-freebsd.cmake
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE x64)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
  
  set(VCPKG_CMAKE_SYSTEM_NAME FreeBSD)
--
+ 
 diff --git a/triplets/community/x64-ios.cmake b/triplets/community/x64-ios.cmake
 index 0c93d6c68..5a94aa22a 100644
 --- a/triplets/community/x64-ios.cmake
@@ -546,17 +525,17 @@ index f909598cb..6afc2ba9c 100644
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=i686-linux-android")
 diff --git a/triplets/community/x86-freebsd.cmake b/triplets/community/x86-freebsd.cmake
-index 62042c766..09d78b074 100644
+index 62042c766..acb2b7185 100644
 --- a/triplets/community/x86-freebsd.cmake
 +++ b/triplets/community/x86-freebsd.cmake
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE x86)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
  
  set(VCPKG_CMAKE_SYSTEM_NAME FreeBSD)
--
+ 
 diff --git a/triplets/community/x86-ios.cmake b/triplets/community/x86-ios.cmake
 index 143b373b9..a7bf55d02 100644
 --- a/triplets/community/x86-ios.cmake
@@ -616,7 +595,7 @@ index 22abeaf2d..e5b7ec8ea 100644
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
 diff --git a/triplets/community/x86-windows-static.cmake b/triplets/community/x86-windows-static.cmake
-index c855f0caa..17f1627b0 100644
+index c855f0caa..b4c73deca 100644
 --- a/triplets/community/x86-windows-static.cmake
 +++ b/triplets/community/x86-windows-static.cmake
 @@ -1,3 +1,4 @@
@@ -626,8 +605,9 @@ index c855f0caa..17f1627b0 100644
 \ No newline at end of file
 +set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
+\ No newline at end of file
 diff --git a/triplets/community/x86-windows-v120.cmake b/triplets/community/x86-windows-v120.cmake
-index 9cc6c315e..356c0fd9d 100644
+index 9cc6c315e..6e13cbab9 100644
 --- a/triplets/community/x86-windows-v120.cmake
 +++ b/triplets/community/x86-windows-v120.cmake
 @@ -1,5 +1,7 @@
@@ -637,26 +617,25 @@ index 9cc6c315e..356c0fd9d 100644
 +set(VCPKG_BUILD_TYPE release)
 +
  set(VCPKG_PLATFORM_TOOLSET "v120")
--set(VCPKG_DEP_INFO_OVERRIDE_VARS "v120")
+ set(VCPKG_DEP_INFO_OVERRIDE_VARS "v120")
 \ No newline at end of file
-+set(VCPKG_DEP_INFO_OVERRIDE_VARS "v120")
 diff --git a/triplets/x64-linux.cmake b/triplets/x64-linux.cmake
-index 882213456..e2a19057f 100644
+index 882213456..ab30045ea 100644
 --- a/triplets/x64-linux.cmake
 +++ b/triplets/x64-linux.cmake
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE x64)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
  
  set(VCPKG_CMAKE_SYSTEM_NAME Linux)
--
+ 
 diff --git a/triplets/x64-osx.cmake b/triplets/x64-osx.cmake
-index 3867590df..36bc859a0 100644
+index 3867590df..6953986d8 100644
 --- a/triplets/x64-osx.cmake
 +++ b/triplets/x64-osx.cmake
-@@ -1,7 +1,7 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE x64)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -664,12 +643,11 @@ index 3867590df..36bc859a0 100644
  
  set(VCPKG_CMAKE_SYSTEM_NAME Darwin)
  set(VCPKG_OSX_ARCHITECTURES x86_64)
--
 diff --git a/triplets/x64-uwp.cmake b/triplets/x64-uwp.cmake
-index 902d8c238..a040b5cf6 100644
+index 902d8c238..edace61f3 100644
 --- a/triplets/x64-uwp.cmake
 +++ b/triplets/x64-uwp.cmake
-@@ -1,7 +1,7 @@
+@@ -1,6 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE x64)
  set(VCPKG_CRT_LINKAGE dynamic)
  set(VCPKG_LIBRARY_LINKAGE dynamic)
@@ -677,7 +655,6 @@ index 902d8c238..a040b5cf6 100644
  
  set(VCPKG_CMAKE_SYSTEM_NAME WindowsStore)
  set(VCPKG_CMAKE_SYSTEM_VERSION 10.0)
--
 diff --git a/triplets/x64-windows-static.cmake b/triplets/x64-windows-static.cmake
 index 1581d2b0f..42894919c 100644
 --- a/triplets/x64-windows-static.cmake
@@ -709,5 +686,5 @@ index 93c43c3ba..0a277bdb7 100644
 -
 +set(VCPKG_BUILD_TYPE release)
 -- 
-2.39.0.windows.2
+2.39.2.windows.1
 

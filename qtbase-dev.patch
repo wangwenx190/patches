@@ -1,4 +1,4 @@
-From 551d3c480b2a31e0097ed0ae0a6b95aa19158943 Mon Sep 17 00:00:00 2001
+From 1a4a01020e638ae50b13bfacd85737c3bc779571 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -27,6 +27,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtInternalTargets.cmake                 |  56 +-
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
+ cmake/modulecppexports.h.in                   |   2 +-
  configure.cmake                               |  10 +
  qt_cmdline.cmake                              |   2 +
  src/corelib/CMakeLists.txt                    |  10 +-
@@ -89,7 +90,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 69 files changed, 2296 insertions(+), 810 deletions(-)
+ 70 files changed, 2297 insertions(+), 811 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -477,6 +478,19 @@ index 0000000000..92532d72dc
 +else()
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
+diff --git a/cmake/modulecppexports.h.in b/cmake/modulecppexports.h.in
+index a7a349084e..bf64df7ce6 100644
+--- a/cmake/modulecppexports.h.in
++++ b/cmake/modulecppexports.h.in
+@@ -16,7 +16,7 @@
+ #  define Q_@module_define_infix@_EXPORT
+ #endif
+ 
+-#if !defined(QT_BUILD_@module_define_infix@_LIB) && !defined(QT_STATIC)
++#ifndef QT_BUILD_@module_define_infix@_LIB
+ /* outside library → inline decl + defi */
+ /* static builds treat everything as part of the library, so they never inline */
+ #  define QT_@module_define_infix@_INLINE_SINCE(major, minor) inline
 diff --git a/configure.cmake b/configure.cmake
 index 4b3e6ff6d4..2695cc7dec 100644
 --- a/configure.cmake

@@ -1,4 +1,4 @@
-From 1a4a01020e638ae50b13bfacd85737c3bc779571 Mon Sep 17 00:00:00 2001
+From f76cf1372734db7e05bddd0601ca854bb04f5110 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -27,7 +27,6 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtInternalTargets.cmake                 |  56 +-
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
- cmake/modulecppexports.h.in                   |   2 +-
  configure.cmake                               |  10 +
  qt_cmdline.cmake                              |   2 +
  src/corelib/CMakeLists.txt                    |  10 +-
@@ -90,7 +89,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 70 files changed, 2297 insertions(+), 811 deletions(-)
+ 69 files changed, 2296 insertions(+), 810 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -478,19 +477,6 @@ index 0000000000..92532d72dc
 +else()
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
-diff --git a/cmake/modulecppexports.h.in b/cmake/modulecppexports.h.in
-index a7a349084e..bf64df7ce6 100644
---- a/cmake/modulecppexports.h.in
-+++ b/cmake/modulecppexports.h.in
-@@ -16,7 +16,7 @@
- #  define Q_@module_define_infix@_EXPORT
- #endif
- 
--#if !defined(QT_BUILD_@module_define_infix@_LIB) && !defined(QT_STATIC)
-+#ifndef QT_BUILD_@module_define_infix@_LIB
- /* outside library → inline decl + defi */
- /* static builds treat everything as part of the library, so they never inline */
- #  define QT_@module_define_infix@_INLINE_SINCE(major, minor) inline
 diff --git a/configure.cmake b/configure.cmake
 index 4b3e6ff6d4..2695cc7dec 100644
 --- a/configure.cmake
@@ -533,10 +519,10 @@ index 5450b2562c..0bfc75636b 100644
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index 09ed1f9e77..8490d88950 100644
+index abc4058bf3..b4e857e5c6 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
-@@ -489,9 +489,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
+@@ -494,9 +494,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
  # from the wrong DLL at runtime and crash!
  qt_internal_extend_target(Core CONDITION QT_FEATURE_thread AND WIN32
      SOURCES
@@ -547,7 +533,7 @@ index 09ed1f9e77..8490d88950 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -757,12 +756,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -765,12 +764,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -560,7 +546,7 @@ index 09ed1f9e77..8490d88950 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1283,6 +1276,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1291,6 +1284,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
@@ -569,7 +555,7 @@ index 09ed1f9e77..8490d88950 100644
  
  set_source_files_properties(serialization/qcborstreamwriter.cpp # CBOR macro clashes
 diff --git a/src/corelib/global/qlibraryinfo.cpp b/src/corelib/global/qlibraryinfo.cpp
-index 715bda488c..6973de9d76 100644
+index 68db820f01..4097fc9a5e 100644
 --- a/src/corelib/global/qlibraryinfo.cpp
 +++ b/src/corelib/global/qlibraryinfo.cpp
 @@ -296,8 +296,13 @@ static QString prefixFromQtCoreLibraryHelper(const QString &qtCoreLibraryPath)
@@ -761,7 +747,7 @@ index a209fb17b6..50edb719fd 100644
                  // If the current host OS is a domain controller and the override OS
                  // is also a server type OS, preserve that information
 diff --git a/src/corelib/global/qsysinfo.cpp b/src/corelib/global/qsysinfo.cpp
-index dace55b6ce..45918ca797 100644
+index 20919d0865..fcbdea9714 100644
 --- a/src/corelib/global/qsysinfo.cpp
 +++ b/src/corelib/global/qsysinfo.cpp
 @@ -165,12 +165,17 @@ static inline QString windowsDisplayVersion()
@@ -798,7 +784,7 @@ index dace55b6ce..45918ca797 100644
      case Q_WINVER(10, 0):
          if (workstation) {
              if (osver.dwBuildNumber >= 22000)
-@@ -887,10 +900,21 @@ QString QSysInfo::prettyProductName()
+@@ -886,10 +899,21 @@ QString QSysInfo::prettyProductName()
      return result + " ("_L1 + versionString + u')';
  #  else
      // (resembling winver.exe): Windows 10 "Windows 10 Version 1809"
@@ -1633,7 +1619,7 @@ index 7c997103d5..2821915c92 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index c49b40bcd8..a6bc4ab57a 100644
+index d9f323eb1a..a6dce3e091 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -8,6 +8,8 @@

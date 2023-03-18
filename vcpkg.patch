@@ -1,4 +1,4 @@
-From b1dbed6421bb55fbcdfbc94db462f67f802f4538 Mon Sep 17 00:00:00 2001
+From 6aaf67fe492186a2bcff03a4ae5ad2b443c037b6 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Sun, 19 Jun 2022 13:06:56 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -686,5 +686,5 @@ index 93c43c3ba..0a277bdb7 100644
 -
 +set(VCPKG_BUILD_TYPE release)
 -- 
-2.39.2.windows.1
+2.40.0.windows.1
 

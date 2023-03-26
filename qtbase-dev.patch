@@ -1,4 +1,4 @@
-From bf075faa8a234ed2ad2f53545be3c48fd921255a Mon Sep 17 00:00:00 2001
+From bc9d02ed0f245555c6f479221d6bb922edd551a3 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -93,7 +93,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../platforms/windows/qwindowsservices.cpp    |   4 +
  .../windows/qwindowssystemtrayicon.cpp        |   8 +-
  .../platforms/windows/qwindowstheme.cpp       | 146 +++--
- .../platforms/windows/qwindowswindow.cpp      | 151 +++--
+ .../platforms/windows/qwindowswindow.cpp      | 149 +++--
  .../uiautomation/qwindowsuiaaccessibility.cpp |   9 +-
  .../uiautomation/qwindowsuiabaseprovider.h    |   4 +-
  .../uiautomation/qwindowsuiamainprovider.cpp  |  53 +-
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2814 insertions(+), 847 deletions(-)
+ 87 files changed, 2813 insertions(+), 846 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -582,10 +582,10 @@ index 0000000000..92532d72dc
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
 diff --git a/configure.cmake b/configure.cmake
-index 4b3e6ff6d4..2695cc7dec 100644
+index 53b397ab8b..0a68226bda 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1125,6 +1125,14 @@ qt_feature("intelcet" PRIVATE
+@@ -1050,6 +1050,14 @@ qt_feature("intelcet" PRIVATE
      LABEL "Using Intel CET"
      CONDITION ( INPUT_intelcet STREQUAL yes ) OR TEST_intelcet
  )
@@ -600,7 +600,7 @@ index 4b3e6ff6d4..2695cc7dec 100644
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1175,6 +1183,8 @@ qt_configure_add_summary_entry(ARGS "relocatable")
+@@ -1090,6 +1098,8 @@ qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
  qt_configure_add_summary_entry(ARGS "intelcet")
@@ -1118,7 +1118,7 @@ index 13b8fe224a..581e2695fe 100644
      const auto process_token = HANDLE(quintptr(-4));
  
 diff --git a/src/corelib/kernel/qcoreapplication.cpp b/src/corelib/kernel/qcoreapplication.cpp
-index 3feb4cf4c4..fdf474efeb 100644
+index e40cab05ba..1ad2243b8d 100644
 --- a/src/corelib/kernel/qcoreapplication.cpp
 +++ b/src/corelib/kernel/qcoreapplication.cpp
 @@ -37,6 +37,7 @@
@@ -1137,7 +1137,7 @@ index 3feb4cf4c4..fdf474efeb 100644
 +static constexpr const char kWwx190EnvVar[] = "__wangwenx190__";
 +#endif
 +
- #if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+ #if defined(Q_OS_WIN) || defined(Q_OS_DARWIN)
  extern QString qAppFileName();
  #endif
 @@ -460,6 +465,9 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv)
@@ -1655,12 +1655,12 @@ index 9fa7e70da9..0c205fff66 100644
  // We mean it.
  //
 diff --git a/src/corelib/thread/qmutex.cpp b/src/corelib/thread/qmutex.cpp
-index 7b4aac9532..ae1a3a7313 100644
+index 293a4a772a..27ca3761b3 100644
 --- a/src/corelib/thread/qmutex.cpp
 +++ b/src/corelib/thread/qmutex.cpp
 @@ -869,6 +869,8 @@ QT_END_NAMESPACE
  // nothing
- #elif defined(Q_OS_MAC)
+ #elif defined(Q_OS_DARWIN)
  #  include "qmutex_mac.cpp"
 +#elif defined(Q_OS_WIN)
 +#  include "qmutex_win.cpp"
@@ -1668,7 +1668,7 @@ index 7b4aac9532..ae1a3a7313 100644
  #  include "qmutex_unix.cpp"
  #endif
 diff --git a/src/corelib/thread/qmutex_p.h b/src/corelib/thread/qmutex_p.h
-index 66d902d1c3..04957a96f3 100644
+index 13a9f10b01..f45543a999 100644
 --- a/src/corelib/thread/qmutex_p.h
 +++ b/src/corelib/thread/qmutex_p.h
 @@ -10,9 +10,10 @@
@@ -3532,7 +3532,7 @@ index 59e332c64a..04c35316c8 100644
      QString elidedText(Qt::TextElideMode mode, QFixed width, int flags = 0, int from = 0, int count = -1) const;
  
 diff --git a/src/gui/text/qtextlayout.cpp b/src/gui/text/qtextlayout.cpp
-index 486e04544a..6a00600688 100644
+index eee86d9a6f..d8b425d46f 100644
 --- a/src/gui/text/qtextlayout.cpp
 +++ b/src/gui/text/qtextlayout.cpp
 @@ -661,6 +661,12 @@ int QTextLayout::nextCursorPosition(int oldPos, CursorMode mode) const
@@ -4115,7 +4115,7 @@ index 026e81cb0c..e17d2bc20d 100644
      hr = uiViewSettingsInterop->GetForWindow(hwnd, uiViewSettingsRefId,
                                               reinterpret_cast<void **>(&viewSettings));
 diff --git a/src/plugins/platforms/windows/qwindowscontext.cpp b/src/plugins/platforms/windows/qwindowscontext.cpp
-index 7fe5b2592c..41d45ed41d 100644
+index 5475e9707b..25e065c98e 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.cpp
 +++ b/src/plugins/platforms/windows/qwindowscontext.cpp
 @@ -204,7 +204,8 @@ QWindowsContext::~QWindowsContext()
@@ -5307,7 +5307,7 @@ index 6fba9e55c1..64b38c594a 100644
      }
      const auto setting = QWinRegistryKey(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Themes\Personalize)")
 diff --git a/src/plugins/platforms/windows/qwindowswindow.cpp b/src/plugins/platforms/windows/qwindowswindow.cpp
-index 6fcc226abc..2c529002d3 100644
+index d0107145af..98b9623575 100644
 --- a/src/plugins/platforms/windows/qwindowswindow.cpp
 +++ b/src/plugins/platforms/windows/qwindowswindow.cpp
 @@ -22,6 +22,7 @@
@@ -5548,7 +5548,7 @@ index 6fcc226abc..2c529002d3 100644
      const qreal scale = qreal(dpi) / qreal(savedDpi());
      setSavedDpi(dpi);
  
-@@ -2335,13 +2382,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
+@@ -2368,13 +2415,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
          return false;
      PAINTSTRUCT ps;
  
@@ -5573,16 +5573,7 @@ index 6fcc226abc..2c529002d3 100644
      // If the a window is obscured by another window (such as a child window)
      // we still need to send isExposed=true, for compatibility.
      // Our tests depend on it.
-@@ -2971,7 +3027,7 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
-             mmi->ptMaxPosition.x = availablePositionDiff.x();
-             mmi->ptMaxPosition.y = availablePositionDiff.y();
-             if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
--                const int borderWidth = invisibleMargins(m_data.hwnd).left();
-+                const int borderWidth = QWindowsContext::getResizeBorderThickness(m_data.hwnd);
-                 mmi->ptMaxSize.x += borderWidth * 2;
-                 mmi->ptMaxSize.y += borderWidth * 2;
-                 mmi->ptMaxTrackSize = mmi->ptMaxSize;
-@@ -3012,7 +3068,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
+@@ -3015,7 +3071,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
              return true;
          }
          if (localPos.y() < 0) {
@@ -5591,7 +5582,7 @@ index 6fcc226abc..2c529002d3 100644
              if (localPos.y() < topResizeBarPos) {
                  *result = HTCAPTION; // Extend caption over top resize bar, let's user move the window.
                  return true;
-@@ -3202,10 +3258,12 @@ enum : WORD {
+@@ -3205,10 +3261,12 @@ enum : WORD {
  
  static bool queryDarkBorder(HWND hwnd)
  {
@@ -5606,7 +5597,7 @@ index 6fcc226abc..2c529002d3 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to retrieve dark window border setting.", __FUNCTION__);
      return result == TRUE;
-@@ -3213,10 +3271,12 @@ static bool queryDarkBorder(HWND hwnd)
+@@ -3216,10 +3274,12 @@ static bool queryDarkBorder(HWND hwnd)
  
  bool QWindowsWindow::setDarkBorderToWindow(HWND hwnd, bool d)
  {
@@ -5621,7 +5612,7 @@ index 6fcc226abc..2c529002d3 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to set %s window border.", __FUNCTION__, d ? "dark" : "light");
      return ok;
-@@ -3337,6 +3397,9 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3340,6 +3400,9 @@ void QWindowsWindow::registerTouchWindow()
      if ((QWindowsContext::instance()->systemInfo() & QWindowsContext::SI_SupportsTouch) == 0)
          return;
  
@@ -5631,7 +5622,7 @@ index 6fcc226abc..2c529002d3 100644
      // Initially register or re-register to change the flags
      const auto touchTypes = QWindowsIntegration::instance()->touchWindowTouchType();
      if (testFlag(TouchRegistered)) {
-@@ -3350,7 +3413,7 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3353,7 +3416,7 @@ void QWindowsWindow::registerTouchWindow()
          touchFlags |= TWF_FINETOUCH;
      if (touchTypes.testFlag(TouchWindowTouchType::WantPalmTouch))
          touchFlags |= TWF_WANTPALM;

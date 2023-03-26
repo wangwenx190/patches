@@ -1,4 +1,4 @@
-From bc9d02ed0f245555c6f479221d6bb922edd551a3 Mon Sep 17 00:00:00 2001
+From 08cf02e96123fc7949bc79600e22917d4ba4b3eb Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -93,7 +93,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../platforms/windows/qwindowsservices.cpp    |   4 +
  .../windows/qwindowssystemtrayicon.cpp        |   8 +-
  .../platforms/windows/qwindowstheme.cpp       | 146 +++--
- .../platforms/windows/qwindowswindow.cpp      | 149 +++--
+ .../platforms/windows/qwindowswindow.cpp      | 151 +++--
  .../uiautomation/qwindowsuiaaccessibility.cpp |   9 +-
  .../uiautomation/qwindowsuiabaseprovider.h    |   4 +-
  .../uiautomation/qwindowsuiamainprovider.cpp  |  53 +-
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2813 insertions(+), 846 deletions(-)
+ 87 files changed, 2814 insertions(+), 847 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -5307,7 +5307,7 @@ index 6fba9e55c1..64b38c594a 100644
      }
      const auto setting = QWinRegistryKey(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Themes\Personalize)")
 diff --git a/src/plugins/platforms/windows/qwindowswindow.cpp b/src/plugins/platforms/windows/qwindowswindow.cpp
-index d0107145af..98b9623575 100644
+index d0107145af..a8f5603e04 100644
 --- a/src/plugins/platforms/windows/qwindowswindow.cpp
 +++ b/src/plugins/platforms/windows/qwindowswindow.cpp
 @@ -22,6 +22,7 @@
@@ -5548,6 +5548,15 @@ index d0107145af..98b9623575 100644
      const qreal scale = qreal(dpi) / qreal(savedDpi());
      setSavedDpi(dpi);
  
+@@ -2158,7 +2205,7 @@ void QWindowsWindow::handleResized(int wParam, LPARAM lParam)
+         int correctHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
+ 
+         if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
+-            const int borderWidth = invisibleMargins(m_data.hwnd).left();
++            const int borderWidth = QWindowsContext::getResizeBorderThickness(m_data.hwnd);
+             correctLeft -= borderWidth;
+             correctTop -= borderWidth;
+             correctWidth += borderWidth * 2;
 @@ -2368,13 +2415,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
          return false;
      PAINTSTRUCT ps;

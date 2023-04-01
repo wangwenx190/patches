@@ -1,4 +1,4 @@
-From 08cf02e96123fc7949bc79600e22917d4ba4b3eb Mon Sep 17 00:00:00 2001
+From 55ed6a09a9b5ae0db8607c438710f362a2c09388 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -623,10 +623,10 @@ index 5450b2562c..0bfc75636b 100644
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index abc4058bf3..b4e857e5c6 100644
+index ee701a2c63..d536d4a68b 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
-@@ -494,9 +494,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
+@@ -496,9 +496,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
  # from the wrong DLL at runtime and crash!
  qt_internal_extend_target(Core CONDITION QT_FEATURE_thread AND WIN32
      SOURCES
@@ -637,7 +637,7 @@ index abc4058bf3..b4e857e5c6 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -765,12 +764,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -767,12 +766,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -650,7 +650,7 @@ index abc4058bf3..b4e857e5c6 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1291,6 +1284,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1293,6 +1286,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
@@ -1364,7 +1364,7 @@ index ecd4bcb27b..febf45927c 100644
  
  class QZeroTimerEvent : public QTimerEvent
 diff --git a/src/corelib/kernel/qfunctions_win.cpp b/src/corelib/kernel/qfunctions_win.cpp
-index ed0e25467c..2022ff2f24 100644
+index d5ce3e5894..fa77a6882f 100644
 --- a/src/corelib/kernel/qfunctions_win.cpp
 +++ b/src/corelib/kernel/qfunctions_win.cpp
 @@ -4,6 +4,7 @@
@@ -1384,7 +1384,7 @@ index ed0e25467c..2022ff2f24 100644
  QComHelper::QComHelper(COINIT concurrencyModel)
  {
      // Avoid overhead of initializing and using obsolete technology
-@@ -44,8 +47,13 @@ bool qt_win_hasPackageIdentity()
+@@ -45,8 +48,13 @@ bool qt_win_hasPackageIdentity()
  {
  #if defined(HAS_APPMODEL)
      static const bool hasPackageIdentity = []() {
@@ -1978,10 +1978,10 @@ index 6208ae52c7..97fbf54aef 100644
  }
  
 diff --git a/src/gui/kernel/qhighdpiscaling.cpp b/src/gui/kernel/qhighdpiscaling.cpp
-index 0f4803d92a..e279befab4 100644
+index 31626ec222..00de9c3f8d 100644
 --- a/src/gui/kernel/qhighdpiscaling.cpp
 +++ b/src/gui/kernel/qhighdpiscaling.cpp
-@@ -614,13 +614,13 @@ qreal QHighDpiScaling::screenSubfactor(const QPlatformScreen *screen)
+@@ -617,13 +617,13 @@ qreal QHighDpiScaling::screenSubfactor(const QPlatformScreen *screen)
          if (auto qScreen = screen->screen()) {
              auto screenFactor = qScreen->property(scaleFactorProperty).toReal(&screenPropertyUsed);
              if (screenPropertyUsed)
@@ -3532,7 +3532,7 @@ index 59e332c64a..04c35316c8 100644
      QString elidedText(Qt::TextElideMode mode, QFixed width, int flags = 0, int from = 0, int count = -1) const;
  
 diff --git a/src/gui/text/qtextlayout.cpp b/src/gui/text/qtextlayout.cpp
-index eee86d9a6f..d8b425d46f 100644
+index b8edea11d5..0798683a5a 100644
 --- a/src/gui/text/qtextlayout.cpp
 +++ b/src/gui/text/qtextlayout.cpp
 @@ -661,6 +661,12 @@ int QTextLayout::nextCursorPosition(int oldPos, CursorMode mode) const
@@ -4115,7 +4115,7 @@ index 026e81cb0c..e17d2bc20d 100644
      hr = uiViewSettingsInterop->GetForWindow(hwnd, uiViewSettingsRefId,
                                               reinterpret_cast<void **>(&viewSettings));
 diff --git a/src/plugins/platforms/windows/qwindowscontext.cpp b/src/plugins/platforms/windows/qwindowscontext.cpp
-index 5475e9707b..25e065c98e 100644
+index 501561115c..30a488ecaa 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.cpp
 +++ b/src/plugins/platforms/windows/qwindowscontext.cpp
 @@ -204,7 +204,8 @@ QWindowsContext::~QWindowsContext()
@@ -4345,7 +4345,7 @@ index 5475e9707b..25e065c98e 100644
          if (!result) {
              const DWORD errorCode = GetLastError();
              qErrnoWarning(int(errorCode), "EnableNonClientDpiScaling() failed for HWND %p (%lu)",
-@@ -1596,4 +1692,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
+@@ -1599,4 +1695,137 @@ bool QWindowsContext::filterNativeEvent(QWindow *window, MSG *msg, LRESULT *resu
      return false;
  }
  
@@ -4758,10 +4758,10 @@ index 3089e745d4..fa961110d7 100644
                                 TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY | TPM_RETURNCMD,
                                 pos.x(), pos.y() + titleBarOffset,
 diff --git a/src/plugins/platforms/windows/qwindowsmousehandler.cpp b/src/plugins/platforms/windows/qwindowsmousehandler.cpp
-index ceb33f6141..1e8188ba18 100644
+index e74afc6a5a..61b230f156 100644
 --- a/src/plugins/platforms/windows/qwindowsmousehandler.cpp
 +++ b/src/plugins/platforms/windows/qwindowsmousehandler.cpp
-@@ -565,6 +565,11 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -562,6 +562,11 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
      using QTouchPoint = QWindowSystemInterface::TouchPoint;
      using QTouchPointList = QList<QWindowSystemInterface::TouchPoint>;
  
@@ -4773,7 +4773,7 @@ index ceb33f6141..1e8188ba18 100644
      if (!QWindowsContext::instance()->initTouch()) {
          qWarning("Unable to initialize touch handling.");
          return true;
-@@ -584,7 +589,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -581,7 +586,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
      touchPoints.reserve(winTouchPointCount);
      QEventPoint::States allStates;
  
@@ -4782,7 +4782,7 @@ index ceb33f6141..1e8188ba18 100644
                        UINT(msg.wParam), winTouchInputs.get(), sizeof(TOUCHINPUT));
      for (int i = 0; i < winTouchPointCount; ++i) {
          const TOUCHINPUT &winTouchInput = winTouchInputs[i];
-@@ -626,7 +631,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
+@@ -623,7 +628,7 @@ bool QWindowsMouseHandler::translateTouchEvent(QWindow *window, HWND,
          touchPoints.append(touchPoint);
      }
  
@@ -4809,7 +4809,7 @@ index 6a790bcc1b..b03bcc1bf5 100644
  
  QDirect3D9Handle::~QDirect3D9Handle()
 diff --git a/src/plugins/platforms/windows/qwindowspointerhandler.cpp b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
-index 88f02347b3..75226c3810 100644
+index 9592caaabf..0dace290fe 100644
 --- a/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 +++ b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 @@ -45,10 +45,13 @@ QWindowsPointerHandler::~QWindowsPointerHandler()

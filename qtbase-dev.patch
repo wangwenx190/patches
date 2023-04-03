@@ -1,4 +1,4 @@
-From 2dd8cf4bfb9ea63d21ce26a6369ccb5d3910cffa Mon Sep 17 00:00:00 2001
+From 04ee087aae9e1d10f9e4f7ad5f88039e35093ee4 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -633,10 +633,10 @@ index 5450b2562c..0bfc75636b 100644
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index ee701a2c63..d536d4a68b 100644
+index d3d977498f..391de2eb82 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
-@@ -496,9 +496,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
+@@ -494,9 +494,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
  # from the wrong DLL at runtime and crash!
  qt_internal_extend_target(Core CONDITION QT_FEATURE_thread AND WIN32
      SOURCES
@@ -647,7 +647,7 @@ index ee701a2c63..d536d4a68b 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -767,12 +766,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -777,12 +776,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -660,14 +660,14 @@ index ee701a2c63..d536d4a68b 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1293,6 +1286,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1307,6 +1300,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
 +    thread/qmutex_win.cpp
      PROPERTIES HEADER_FILE_ONLY ON)  # special case: These files are included by qmutex.cpp!
  
- set_source_files_properties(serialization/qcborstreamwriter.cpp # CBOR macro clashes
+ # Remove QT_NO_CAST_TO_ASCII to ensure that the symbols are included in the library.
 diff --git a/src/corelib/global/qlibraryinfo.cpp b/src/corelib/global/qlibraryinfo.cpp
 index 68db820f01..4097fc9a5e 100644
 --- a/src/corelib/global/qlibraryinfo.cpp
@@ -1759,10 +1759,10 @@ index cfb36ca30b..01bb000366 100644
  // We mean it.
  //
 diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
-index 3fd28d2a01..6b6bc480c6 100644
+index b6ecc5f333..d15490b26e 100644
 --- a/src/gui/CMakeLists.txt
 +++ b/src/gui/CMakeLists.txt
-@@ -422,12 +422,6 @@ qt_internal_extend_target(Gui CONDITION WIN32
+@@ -419,12 +419,6 @@ qt_internal_extend_target(Gui CONDITION WIN32
          ole32
          shell32
          user32
@@ -1775,7 +1775,7 @@ index 3fd28d2a01..6b6bc480c6 100644
  )
  
  if(QT_FEATURE_egl)
-@@ -463,21 +457,6 @@ qt_internal_extend_target(Gui CONDITION APPLE AND QT_FEATURE_accessibility
+@@ -460,21 +454,6 @@ qt_internal_extend_target(Gui CONDITION APPLE AND QT_FEATURE_accessibility
          ${FWFoundation}
  )
  
@@ -1797,7 +1797,7 @@ index 3fd28d2a01..6b6bc480c6 100644
  if(QT_FEATURE_accessibility AND QT_FEATURE_accessibility_atspi_bridge)
      set(atspi_accessibility ON)
  else()
-@@ -536,6 +515,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_movie
+@@ -533,6 +512,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_movie
          image/qmovie.cpp image/qmovie.h
  )
  
@@ -1809,7 +1809,7 @@ index 3fd28d2a01..6b6bc480c6 100644
  qt_internal_extend_target(Gui CONDITION QT_FEATURE_png
      SOURCES
          image/qpnghandler.cpp image/qpnghandler_p.h
-@@ -723,20 +707,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND WIN32
+@@ -720,20 +704,11 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND WIN32
  qt_internal_extend_target(Gui CONDITION QT_FEATURE_direct2d AND QT_FEATURE_directwrite AND WIN32
      SOURCES
          text/windows/qwindowsfontenginedirectwrite.cpp text/windows/qwindowsfontenginedirectwrite_p.h
@@ -4013,10 +4013,10 @@ index bcf29dedd1..4095e3f023 100644
      add_subdirectory(qnx)
  endif()
 diff --git a/src/plugins/platforms/windows/CMakeLists.txt b/src/plugins/platforms/windows/CMakeLists.txt
-index 4425e78b30..7b51026bd3 100644
+index 333b7d67f1..95e7e9c455 100644
 --- a/src/plugins/platforms/windows/CMakeLists.txt
 +++ b/src/plugins/platforms/windows/CMakeLists.txt
-@@ -49,7 +49,6 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
+@@ -51,7 +51,6 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
          Qt::Gui
          Qt::GuiPrivate
          advapi32
@@ -4024,7 +4024,7 @@ index 4425e78b30..7b51026bd3 100644
          gdi32
          imm32
          ole32
-@@ -60,10 +59,7 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
+@@ -62,10 +61,7 @@ qt_internal_add_plugin(QWindowsIntegrationPlugin
          winmm
          winspool
          wtsapi32
@@ -4034,7 +4034,7 @@ index 4425e78b30..7b51026bd3 100644
 -        runtimeobject
  )
  
- # Duplicated symbols
+ # Resources:
 @@ -193,6 +189,8 @@ qt_internal_extend_target(QWindowsIntegrationPlugin CONDITION QT_FEATURE_accessi
          uiautomation/qwindowsuiautils.cpp uiautomation/qwindowsuiautils.h
          uiautomation/qwindowsuiavalueprovider.cpp uiautomation/qwindowsuiavalueprovider.h
@@ -5987,7 +5987,7 @@ index e461ab6294..e6e6cd433b 100644
      case Python_Code:
          writeString("qt_resource_struct = b\"\\\n");
 diff --git a/src/widgets/CMakeLists.txt b/src/widgets/CMakeLists.txt
-index 417f6a2d8e..bc783425ea 100644
+index 39c197eeba..d0f386640a 100644
 --- a/src/widgets/CMakeLists.txt
 +++ b/src/widgets/CMakeLists.txt
 @@ -322,7 +322,6 @@ qt_internal_extend_target(Widgets CONDITION MACOS

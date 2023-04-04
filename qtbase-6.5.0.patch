@@ -1,4 +1,4 @@
-From 58bedfb886f87395db5c0f04aa1d34d06f212c2e Mon Sep 17 00:00:00 2001
+From d675dcb93195875e2778d6329744ba5e9baa0e38 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -21,91 +21,91 @@ Important changes list:
 
 Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 ---
- build-test.bat                                |   27 +
- cmake/FindLCMS2.cmake                         |   78 +
- cmake/QtBaseGlobalTargets.cmake               |    2 +
- cmake/QtBuild.cmake                           |    9 +
- cmake/QtCompilerOptimization.cmake            |   15 +-
- cmake/QtInternalTargets.cmake                 |   60 +-
- cmake/VC-LTL.cmake                            |   94 +
- cmake/YY-Thunks.cmake                         |   90 +
- configure.cmake                               |   10 +
- qt_cmdline.cmake                              |    2 +
- src/corelib/CMakeLists.txt                    |   10 +-
- src/corelib/global/qlibraryinfo.cpp           |   20 +-
- src/corelib/global/qlibraryinfo.h             |    5 +
- .../global/qoperatingsystemversion.cpp        |   10 +
- src/corelib/global/qoperatingsystemversion.h  |   40 +
- .../global/qoperatingsystemversion_win.cpp    |   20 +-
- src/corelib/global/qsysinfo.cpp               |   34 +-
- src/corelib/io/qfilesystemengine_win.cpp      |  108 +-
- src/corelib/io/qfilesystemiterator_win.cpp    |    6 +-
- src/corelib/io/qlockfile_win.cpp              |   14 +-
- src/corelib/io/qstandardpaths_win.cpp         |    4 +
- src/corelib/kernel/qcoreapplication.cpp       |   39 +
- src/corelib/kernel/qeventdispatcher_win.cpp   |   77 +-
- src/corelib/kernel/qeventdispatcher_win_p.h   |    2 +
- src/corelib/kernel/qfunctions_win.cpp         |   10 +-
- src/corelib/plugin/qsystemlibrary.cpp         |   46 +-
- src/corelib/text/qlocale_win.cpp              |   23 +-
- src/corelib/thread/qfutex_p.h                 |   76 +-
- src/corelib/thread/qlocking_p.h               |    7 +-
- src/corelib/thread/qmutex.cpp                 |    2 +
- src/corelib/thread/qmutex_p.h                 |    9 +-
- src/corelib/thread/qmutex_win.cpp             |   30 +
- src/corelib/thread/qwaitcondition_p.h         |    7 +-
- src/gui/CMakeLists.txt                        |   34 +-
- src/gui/configure.cmake                       |    8 +
- src/gui/image/qimage.cpp                      |   77 +-
- src/gui/image/qimagereader.cpp                |    1 +
- src/gui/kernel/qhighdpiscaling.cpp            |    4 +-
- src/gui/kernel/qopenglcontext.cpp             |   30 +-
- src/gui/opengl/qopengl.cpp                    |   32 +-
- src/gui/painting/qpainter.cpp                 |  119 +-
- src/gui/rhi/qrhid3d11.cpp                     |  538 +-
- src/gui/rhi/qrhid3d11_p_p.h                   |    3 +-
- src/gui/text/qtextcursor.cpp                  |    6 +
- src/gui/text/qtextengine.cpp                  |   71 +-
- src/gui/text/qtextengine_p.h                  |    2 +
- src/gui/text/qtextlayout.cpp                  |   11 +
- .../qwindowsdirectwritefontdatabase.cpp       |    6 +-
- src/gui/text/windows/qwindowsfontdatabase.cpp |    3 +-
- .../text/windows/qwindowsfontdatabasebase.cpp |   21 +-
- .../windows/qwindowsfontenginedirectwrite.cpp |    9 +-
- .../socket/qnativesocketengine_win.cpp        |   21 +-
- src/openglwidgets/qopenglwidget.cpp           |   41 +-
- .../imageformats/jpeg/qjpeghandler.cpp        |    3 +
- .../qnetworklistmanagerevents.cpp             |   54 +-
- src/plugins/platforms/CMakeLists.txt          |    9 -
- src/plugins/platforms/windows/CMakeLists.txt  |    6 +-
- .../platforms/windows/qwin10helpers.cpp       |   43 +-
- .../platforms/windows/qwindowscontext.cpp     |  401 +-
- .../platforms/windows/qwindowscontext.h       |  137 +-
- .../windows/qwindowsdialoghelpers.cpp         |    3 +-
- .../platforms/windows/qwindowsdrag.cpp        |    7 +-
- .../platforms/windows/qwindowsintegration.cpp |   25 +-
- .../platforms/windows/qwindowskeymapper.cpp   |   18 +-
- .../windows/qwindowsmousehandler.cpp          |   11 +-
- .../windows/qwindowsopengltester.cpp          |    6 +-
- .../windows/qwindowspointerhandler.cpp        |   25 +-
- .../platforms/windows/qwindowsscreen.cpp      |   71 +-
- .../platforms/windows/qwindowsservices.cpp    |    4 +
- .../windows/qwindowssystemtrayicon.cpp        |    8 +-
- .../platforms/windows/qwindowstheme.cpp       |  146 +-
- .../platforms/windows/qwindowswindow.cpp      |  149 +-
- .../uiautomation/qwindowsuiaaccessibility.cpp |    9 +-
- .../uiautomation/qwindowsuiabaseprovider.h    |    4 +-
- .../uiautomation/qwindowsuiamainprovider.cpp  |   53 +-
- .../windows/uiautomation/qwindowsuiautils.h   |    2 +-
- .../windowsvista/qwindowsvistastyle.cpp       |   31 +
- .../windowsvista/qwindowsvistastyle_p_p.h     |    1 +
- src/tools/rcc/main.cpp                        |    7 +-
- src/tools/rcc/rcc.cpp                         |    8 +-
- src/widgets/CMakeLists.txt                    |    1 -
- src/widgets/dialogs/qwizard_win.cpp           |   55 +-
- src/widgets/kernel/qwidget.cpp                |   18 +
- src/widgets/widgets/qabstractscrollarea.cpp   |    7 +-
- 84 files changed, 2617 insertions(+), 728 deletions(-)
+ build-test.bat                                |  27 +
+ cmake/FindLCMS2.cmake                         |  78 +++
+ cmake/QtBaseGlobalTargets.cmake               |   2 +
+ cmake/QtBuild.cmake                           |   9 +
+ cmake/QtCompilerOptimization.cmake            |  15 +-
+ cmake/QtInternalTargets.cmake                 |  56 +-
+ cmake/VC-LTL.cmake                            |  94 +++
+ cmake/YY-Thunks.cmake                         |  90 +++
+ configure.cmake                               |  10 +
+ qt_cmdline.cmake                              |   2 +
+ src/corelib/CMakeLists.txt                    |  10 +-
+ src/corelib/global/qlibraryinfo.cpp           |  20 +-
+ src/corelib/global/qlibraryinfo.h             |   5 +
+ .../global/qoperatingsystemversion.cpp        |  10 +
+ src/corelib/global/qoperatingsystemversion.h  |  40 ++
+ .../global/qoperatingsystemversion_win.cpp    |  20 +-
+ src/corelib/global/qsysinfo.cpp               |  34 +-
+ src/corelib/io/qfilesystemengine_win.cpp      | 108 ++--
+ src/corelib/io/qfilesystemiterator_win.cpp    |   6 +-
+ src/corelib/io/qlockfile_win.cpp              |  14 +-
+ src/corelib/io/qstandardpaths_win.cpp         |   4 +
+ src/corelib/kernel/qcoreapplication.cpp       |  39 ++
+ src/corelib/kernel/qeventdispatcher_win.cpp   |  77 ++-
+ src/corelib/kernel/qeventdispatcher_win_p.h   |   2 +
+ src/corelib/kernel/qfunctions_win.cpp         |  10 +-
+ src/corelib/plugin/qsystemlibrary.cpp         |  46 +-
+ src/corelib/text/qlocale_win.cpp              |  23 +-
+ src/corelib/thread/qfutex_p.h                 |  76 ++-
+ src/corelib/thread/qlocking_p.h               |   7 +-
+ src/corelib/thread/qmutex.cpp                 |   2 +
+ src/corelib/thread/qmutex_p.h                 |   9 +-
+ src/corelib/thread/qmutex_win.cpp             |  30 +
+ src/corelib/thread/qwaitcondition_p.h         |   7 +-
+ src/gui/CMakeLists.txt                        |  34 +-
+ src/gui/configure.cmake                       |   8 +
+ src/gui/image/qimage.cpp                      |  77 ++-
+ src/gui/image/qimagereader.cpp                |   1 +
+ src/gui/kernel/qhighdpiscaling.cpp            |   4 +-
+ src/gui/kernel/qopenglcontext.cpp             |  30 +-
+ src/gui/opengl/qopengl.cpp                    |  32 +-
+ src/gui/painting/qpainter.cpp                 | 119 +++-
+ src/gui/rhi/qrhid3d11.cpp                     | 538 +++++++++++-------
+ src/gui/rhi/qrhid3d11_p_p.h                   |   3 +-
+ src/gui/text/qtextcursor.cpp                  |   6 +
+ src/gui/text/qtextengine.cpp                  |  71 ++-
+ src/gui/text/qtextengine_p.h                  |   2 +
+ src/gui/text/qtextlayout.cpp                  |  11 +
+ .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
+ src/gui/text/windows/qwindowsfontdatabase.cpp |   3 +-
+ .../text/windows/qwindowsfontdatabasebase.cpp |  21 +-
+ .../windows/qwindowsfontenginedirectwrite.cpp |   9 +-
+ .../socket/qnativesocketengine_win.cpp        |  21 +-
+ src/openglwidgets/qopenglwidget.cpp           |  41 +-
+ .../imageformats/jpeg/qjpeghandler.cpp        |   3 +
+ .../qnetworklistmanagerevents.cpp             |  54 +-
+ src/plugins/platforms/CMakeLists.txt          |   9 -
+ src/plugins/platforms/windows/CMakeLists.txt  |   6 +-
+ .../platforms/windows/qwin10helpers.cpp       |  43 +-
+ .../platforms/windows/qwindowscontext.cpp     | 401 +++++++++++--
+ .../platforms/windows/qwindowscontext.h       | 137 ++++-
+ .../windows/qwindowsdialoghelpers.cpp         |   3 +-
+ .../platforms/windows/qwindowsdrag.cpp        |   7 +-
+ .../platforms/windows/qwindowsintegration.cpp |  25 +-
+ .../platforms/windows/qwindowskeymapper.cpp   |  18 +-
+ .../windows/qwindowsmousehandler.cpp          |  11 +-
+ .../windows/qwindowsopengltester.cpp          |   6 +-
+ .../windows/qwindowspointerhandler.cpp        |  25 +-
+ .../platforms/windows/qwindowsscreen.cpp      |  71 +--
+ .../platforms/windows/qwindowsservices.cpp    |   4 +
+ .../windows/qwindowssystemtrayicon.cpp        |   8 +-
+ .../platforms/windows/qwindowstheme.cpp       | 146 +++--
+ .../platforms/windows/qwindowswindow.cpp      | 149 +++--
+ .../uiautomation/qwindowsuiaaccessibility.cpp |   9 +-
+ .../uiautomation/qwindowsuiabaseprovider.h    |   4 +-
+ .../uiautomation/qwindowsuiamainprovider.cpp  |  53 +-
+ .../windows/uiautomation/qwindowsuiautils.h   |   2 +-
+ .../windowsvista/qwindowsvistastyle.cpp       |  31 +
+ .../windowsvista/qwindowsvistastyle_p_p.h     |   1 +
+ src/tools/rcc/main.cpp                        |   7 +-
+ src/tools/rcc/rcc.cpp                         |   8 +-
+ src/widgets/CMakeLists.txt                    |   1 -
+ src/widgets/dialogs/qwizard_win.cpp           |  55 +-
+ src/widgets/kernel/qwidget.cpp                |  18 +
+ src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
+ 84 files changed, 2613 insertions(+), 728 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -114,7 +114,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 
 diff --git a/build-test.bat b/build-test.bat
 new file mode 100644
-index 0000000000..03cc233d9a
+index 0000000000..c665ccc6bb
 --- /dev/null
 +++ b/build-test.bat
 @@ -0,0 +1,27 @@
@@ -127,8 +127,8 @@ index 0000000000..03cc233d9a
 +cd build-test
 +md cmake
 +cd cmake
-+:: -DINPUT_mimetype_database_compression=zstd -DQT_DISABLE_DEPRECATED_UP_TO=0x070000
-+set __common_flags=-Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF -DINPUT_intelcet=yes -DINPUT_spectre=yes -DINPUT_ehcont=yes
++:: -DINPUT_mimetype_database_compression=zstd -DQT_DISABLE_DEPRECATED_UP_TO=0x070000 -DINPUT_intelcet=yes -DINPUT_spectre=yes -DINPUT_ehcont=yes
++set __common_flags=-Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF
 +cmake %__common_flags% -DCMAKE_INSTALL_PREFIX="%~dp0build-test\shared" -DCMAKE_CONFIGURATION_TYPES=Release;Debug -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=ON -DBUILD_SHARED_LIBS=ON -G"Ninja Multi-Config" "%~dp0"
 +cmake --build . --parallel
 +ninja install
@@ -291,20 +291,10 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index dc45b57eec..44807d6fcc 100644
+index dc45b57eec..d8bb89b9b9 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
-@@ -245,6 +245,9 @@ if (MSVC)
-             -Zc:referenceBinding
-             -Zc:ternary
-         )
-+        target_link_options(PlatformCommonInternal INTERFACE 
-+            -DEPENDENTLOADFLAG:0x800
-+        )
-     endif()
-     if (MSVC_VERSION GREATER_EQUAL 1919 AND NOT CLANG) # MSVC 2019
-         target_compile_options(PlatformCommonInternal INTERFACE
-@@ -253,6 +256,11 @@ if (MSVC)
+@@ -253,6 +253,11 @@ if (MSVC)
              #-Zc:preprocessor # breaks build due to bug in default Windows SDK 10.0.19041
          )
      endif()
@@ -316,7 +306,7 @@ index dc45b57eec..44807d6fcc 100644
  
      target_compile_options(PlatformCommonInternal INTERFACE
          -Zc:wchar_t
-@@ -260,13 +268,19 @@ if (MSVC)
+@@ -260,13 +265,19 @@ if (MSVC)
      )
  
      target_compile_options(PlatformCommonInternal INTERFACE
@@ -338,7 +328,7 @@ index dc45b57eec..44807d6fcc 100644
  endif()
  
  if(MINGW)
-@@ -279,16 +293,50 @@ endif()
+@@ -279,16 +290,49 @@ endif()
  
  if(QT_FEATURE_intelcet)
      if(MSVC)
@@ -346,10 +336,9 @@ index dc45b57eec..44807d6fcc 100644
 -            -CETCOMPAT
 -        )
 +        if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
-+            # wangwenx190: Enabling CET causes MOC fail to compile source files. Why ???
-+            #[[target_link_options(PlatformCommonInternal INTERFACE
++            target_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
-+            )]]
++            )
 +        endif()
      else()
          target_compile_options(PlatformCommonInternal INTERFACE
@@ -4220,7 +4209,7 @@ index e8914fb6a2..41d45ed41d 100644
 +
  QT_END_NAMESPACE
 diff --git a/src/plugins/platforms/windows/qwindowscontext.h b/src/plugins/platforms/windows/qwindowscontext.h
-index 6b3010f33c..4252b9b801 100644
+index 6b3010f33c..408ac39529 100644
 --- a/src/plugins/platforms/windows/qwindowscontext.h
 +++ b/src/plugins/platforms/windows/qwindowscontext.h
 @@ -10,13 +10,18 @@
@@ -4369,7 +4358,7 @@ index 6b3010f33c..4252b9b801 100644
 -    void setProcessDpiAwareness(QtWindows::ProcessDpiAwareness dpiAwareness);
 -    static int processDpiAwareness();
 -    bool setProcessDpiV2Awareness();
-+    
++
 +    static bool setProcessDpiAwareness(QtWindows::DpiAwareness dpiAwareness);
 +    static QtWindows::DpiAwareness processDpiAwareness();
 +    static QtWindows::DpiAwareness windowDpiAwareness(HWND hwnd);

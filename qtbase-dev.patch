@@ -1,4 +1,4 @@
-From 04ee087aae9e1d10f9e4f7ad5f88039e35093ee4 Mon Sep 17 00:00:00 2001
+From a7dda4e3e1505a39a9e556e54615598b6f0fac33 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -294,14 +294,14 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 21730457d8..ac52a06913 100644
+index 21730457d8..2d8650b4c8 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
 @@ -247,6 +247,9 @@ if (MSVC)
              -Zc:referenceBinding
              -Zc:ternary
          )
-+        target_compile_options(PlatformCommonInternal INTERFACE 
++        target_link_options(PlatformCommonInternal INTERFACE 
 +            -DEPENDENTLOADFLAG:0x800
 +        )
      endif()

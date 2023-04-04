@@ -1,4 +1,4 @@
-From a7dda4e3e1505a39a9e556e54615598b6f0fac33 Mon Sep 17 00:00:00 2001
+From 61f8777a30a778f2408b4d63338eddea0163c01c Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,7 +26,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtBaseGlobalTargets.cmake               |   2 +
  cmake/QtBuild.cmake                           |   9 +
  cmake/QtCompilerOptimization.cmake            |  15 +-
- cmake/QtInternalTargets.cmake                 |  59 +-
+ cmake/QtInternalTargets.cmake                 |  60 +-
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
  configure.cmake                               |  10 +
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2817 insertions(+), 847 deletions(-)
+ 87 files changed, 2818 insertions(+), 847 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -294,7 +294,7 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 21730457d8..2d8650b4c8 100644
+index 21730457d8..272b7ae3d4 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
 @@ -247,6 +247,9 @@ if (MSVC)
@@ -341,7 +341,7 @@ index 21730457d8..2d8650b4c8 100644
  endif()
  
  if(MINGW)
-@@ -281,16 +295,49 @@ endif()
+@@ -281,16 +295,50 @@ endif()
  
  if(QT_FEATURE_intelcet)
      if(MSVC)
@@ -349,9 +349,10 @@ index 21730457d8..2d8650b4c8 100644
 -            -CETCOMPAT
 -        )
 +        if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
-+            target_link_options(PlatformCommonInternal INTERFACE
++            # wangwenx190: Enabling CET causes MOC fail to compile source files. Why ???
++            #[[target_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
-+            )
++            )]]
 +        endif()
      else()
          target_compile_options(PlatformCommonInternal INTERFACE

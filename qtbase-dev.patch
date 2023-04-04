@@ -1,4 +1,4 @@
-From 61f8777a30a778f2408b4d63338eddea0163c01c Mon Sep 17 00:00:00 2001
+From e052dfbcae355fef98ab0a4ad7173995d8302f0a Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,7 +26,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtBaseGlobalTargets.cmake               |   2 +
  cmake/QtBuild.cmake                           |   9 +
  cmake/QtCompilerOptimization.cmake            |  15 +-
- cmake/QtInternalTargets.cmake                 |  60 +-
+ cmake/QtInternalTargets.cmake                 |  56 +-
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
  configure.cmake                               |  10 +
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2818 insertions(+), 847 deletions(-)
+ 87 files changed, 2814 insertions(+), 847 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -117,7 +117,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 
 diff --git a/build-test.bat b/build-test.bat
 new file mode 100644
-index 0000000000..03cc233d9a
+index 0000000000..c665ccc6bb
 --- /dev/null
 +++ b/build-test.bat
 @@ -0,0 +1,27 @@
@@ -130,8 +130,8 @@ index 0000000000..03cc233d9a
 +cd build-test
 +md cmake
 +cd cmake
-+:: -DINPUT_mimetype_database_compression=zstd -DQT_DISABLE_DEPRECATED_UP_TO=0x070000
-+set __common_flags=-Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF -DINPUT_intelcet=yes -DINPUT_spectre=yes -DINPUT_ehcont=yes
++:: -DINPUT_mimetype_database_compression=zstd -DQT_DISABLE_DEPRECATED_UP_TO=0x070000 -DINPUT_intelcet=yes -DINPUT_spectre=yes -DINPUT_ehcont=yes
++set __common_flags=-Wno-dev -DCMAKE_MESSAGE_LOG_LEVEL=STATUS -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_relocatable=ON -DFEATURE_system_zlib=OFF
 +cmake %__common_flags% -DCMAKE_INSTALL_PREFIX="%~dp0build-test\shared" -DCMAKE_CONFIGURATION_TYPES=Release;Debug -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=ON -DBUILD_SHARED_LIBS=ON -G"Ninja Multi-Config" "%~dp0"
 +cmake --build . --parallel
 +ninja install
@@ -294,20 +294,10 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 21730457d8..272b7ae3d4 100644
+index 21730457d8..9c5f7bf78b 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
-@@ -247,6 +247,9 @@ if (MSVC)
-             -Zc:referenceBinding
-             -Zc:ternary
-         )
-+        target_link_options(PlatformCommonInternal INTERFACE 
-+            -DEPENDENTLOADFLAG:0x800
-+        )
-     endif()
-     if (MSVC_VERSION GREATER_EQUAL 1919 AND NOT CLANG) # MSVC 2019
-         target_compile_options(PlatformCommonInternal INTERFACE
-@@ -255,6 +258,11 @@ if (MSVC)
+@@ -255,6 +255,11 @@ if (MSVC)
              #-Zc:preprocessor # breaks build due to bug in default Windows SDK 10.0.19041
          )
      endif()
@@ -319,7 +309,7 @@ index 21730457d8..272b7ae3d4 100644
  
      target_compile_options(PlatformCommonInternal INTERFACE
          -Zc:wchar_t
-@@ -262,13 +270,19 @@ if (MSVC)
+@@ -262,13 +267,19 @@ if (MSVC)
      )
  
      target_compile_options(PlatformCommonInternal INTERFACE
@@ -341,7 +331,7 @@ index 21730457d8..272b7ae3d4 100644
  endif()
  
  if(MINGW)
-@@ -281,16 +295,50 @@ endif()
+@@ -281,16 +292,49 @@ endif()
  
  if(QT_FEATURE_intelcet)
      if(MSVC)
@@ -349,10 +339,9 @@ index 21730457d8..272b7ae3d4 100644
 -            -CETCOMPAT
 -        )
 +        if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
-+            # wangwenx190: Enabling CET causes MOC fail to compile source files. Why ???
-+            #[[target_link_options(PlatformCommonInternal INTERFACE
++            target_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
-+            )]]
++            )
 +        endif()
      else()
          target_compile_options(PlatformCommonInternal INTERFACE

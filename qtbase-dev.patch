@@ -1,4 +1,4 @@
-From 7596bad46add2875a63f0d55c7840c49f86ad775 Mon Sep 17 00:00:00 2001
+From 6544d5effa7dcda2e7a3c7e8d3052a92c8556add Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -1118,7 +1118,7 @@ index 13b8fe224a..581e2695fe 100644
      const auto process_token = HANDLE(quintptr(-4));
  
 diff --git a/src/corelib/kernel/qcoreapplication.cpp b/src/corelib/kernel/qcoreapplication.cpp
-index e40cab05ba..1ad2243b8d 100644
+index f9163ac306..bac0f84f88 100644
 --- a/src/corelib/kernel/qcoreapplication.cpp
 +++ b/src/corelib/kernel/qcoreapplication.cpp
 @@ -37,6 +37,7 @@

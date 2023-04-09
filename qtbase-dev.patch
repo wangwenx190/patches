@@ -1,4 +1,4 @@
-From 6544d5effa7dcda2e7a3c7e8d3052a92c8556add Mon Sep 17 00:00:00 2001
+From 870615a7a6d64b9756408e3674cf15f6679aeb8c Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,11 +26,11 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtBaseGlobalTargets.cmake               |   2 +
  cmake/QtBuild.cmake                           |   9 +
  cmake/QtCompilerOptimization.cmake            |  15 +-
- cmake/QtInternalTargets.cmake                 |  56 +-
+ cmake/QtInternalTargets.cmake                 |  67 ++-
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
- configure.cmake                               |  10 +
- qt_cmdline.cmake                              |   2 +
+ configure.cmake                               |  15 +
+ qt_cmdline.cmake                              |   3 +
  src/corelib/CMakeLists.txt                    |  10 +-
  src/corelib/global/qlibraryinfo.cpp           |  20 +-
  src/corelib/global/qlibraryinfo.h             |   5 +
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2814 insertions(+), 847 deletions(-)
+ 87 files changed, 2832 insertions(+), 846 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -294,10 +294,10 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 21730457d8..9c5f7bf78b 100644
+index 2208c28f34..b8e232d389 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
-@@ -255,6 +255,11 @@ if (MSVC)
+@@ -260,6 +260,11 @@ if (MSVC)
              #-Zc:preprocessor # breaks build due to bug in default Windows SDK 10.0.19041
          )
      endif()
@@ -309,18 +309,18 @@ index 21730457d8..9c5f7bf78b 100644
  
      target_compile_options(PlatformCommonInternal INTERFACE
          -Zc:wchar_t
-@@ -262,13 +267,19 @@ if (MSVC)
+@@ -267,13 +272,19 @@ if (MSVC)
      )
  
      target_compile_options(PlatformCommonInternal INTERFACE
 -        $<$<NOT:$<CONFIG:Debug>>:-guard:cf -Gw>
-+        $<$<NOT:$<CONFIG:Debug>>:-fp:fast -guard:cf -GF -GT -Gw -Gy> # -GA for executables.
++        $<$<NOT:$<CONFIG:Debug>>:-fp:fast -GF -GT -Gw -Gy> # -GA for executables.
      )
  
      target_link_options(PlatformCommonInternal INTERFACE
          -DYNAMICBASE -NXCOMPAT -LARGEADDRESSAWARE
 -        $<$<NOT:$<CONFIG:Debug>>:-OPT:REF -OPT:ICF -GUARD:CF>
-+        $<$<NOT:$<CONFIG:Debug>>:-OPT:REF -OPT:ICF -OPT:LBR -GUARD:CF>
++        $<$<NOT:$<CONFIG:Debug>>:-OPT:REF -OPT:ICF -OPT:LBR>
      )
 +
 +    if(TEST_architecture_arch STREQUAL "x86_64")
@@ -331,13 +331,27 @@ index 21730457d8..9c5f7bf78b 100644
  endif()
  
  if(MINGW)
-@@ -281,16 +292,49 @@ endif()
+@@ -284,18 +295,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
+     target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
+ endif()
  
- if(QT_FEATURE_intelcet)
+-if(QT_FEATURE_intelcet)
++if(QT_FEATURE_cfguard)
      if(MSVC)
--        target_link_options(PlatformCommonInternal INTERFACE
++        target_compile_options(PlatformCommonInternal INTERFACE
++            $<$<NOT:$<CONFIG:Debug>>:-guard:cf>
++        )
+         target_link_options(PlatformCommonInternal INTERFACE
 -            -CETCOMPAT
--        )
++            $<$<NOT:$<CONFIG:Debug>>:-GUARD:CF>
+         )
++    else()
++        # TODO
++    endif()
++endif()
++
++if(QT_FEATURE_intelcet)
++    if(MSVC)
 +        if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
 +            target_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
@@ -373,7 +387,7 @@ index 21730457d8..9c5f7bf78b 100644
 +            target_compile_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
 +            )
-+            target_compile_options(PlatformCommonInternal INTERFACE
++            target_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
 +            )
 +        endif()
@@ -582,10 +596,18 @@ index 0000000000..92532d72dc
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
 diff --git a/configure.cmake b/configure.cmake
-index 53b397ab8b..0a68226bda 100644
+index 53b397ab8b..85951f844a 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1050,6 +1050,14 @@ qt_feature("intelcet" PRIVATE
+@@ -1046,10 +1046,22 @@ qt_feature("relocatable" PRIVATE
+     AUTODETECT QT_FEATURE_shared
+     CONDITION QT_FEATURE_dlopen OR WIN32 OR NOT QT_FEATURE_shared
+ )
++qt_feature("cfguard" PRIVATE
++    LABEL "Enable control flow guard"
++    CONDITION INPUT_cfguard STREQUAL yes
++)
+ qt_feature("intelcet" PRIVATE
      LABEL "Using Intel CET"
      CONDITION ( INPUT_intelcet STREQUAL yes ) OR TEST_intelcet
  )
@@ -594,15 +616,17 @@ index 53b397ab8b..0a68226bda 100644
 +    CONDITION INPUT_spectre STREQUAL yes
 +)
 +qt_feature("ehcont" PRIVATE
-+    LABEL "Ehcont guard"
++    LABEL "Enable EHCONT guard"
 +    CONDITION INPUT_ehcont STREQUAL yes
 +)
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1090,6 +1098,8 @@ qt_configure_add_summary_entry(ARGS "relocatable")
+@@ -1089,7 +1101,10 @@ qt_configure_add_summary_entry(
+ qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
++qt_configure_add_summary_entry(ARGS "cfguard")
  qt_configure_add_summary_entry(ARGS "intelcet")
 +qt_configure_add_summary_entry(ARGS "spectre")
 +qt_configure_add_summary_entry(ARGS "ehcont")
@@ -610,12 +634,14 @@ index 53b397ab8b..0a68226bda 100644
      ARGS "wasm-simd128"
      CONDITION ( TEST_architecture_arch STREQUAL wasm )
 diff --git a/qt_cmdline.cmake b/qt_cmdline.cmake
-index 5450b2562c..0bfc75636b 100644
+index 5450b2562c..748bc8ba6d 100644
 --- a/qt_cmdline.cmake
 +++ b/qt_cmdline.cmake
-@@ -74,6 +74,8 @@ qt_commandline_option(openssl-runtime TYPE void NAME openssl VALUE runtime)
+@@ -73,7 +73,10 @@ qt_commandline_option(openssl-linked TYPE void NAME openssl VALUE linked)
+ qt_commandline_option(openssl-runtime TYPE void NAME openssl VALUE runtime)
  qt_commandline_option(linker TYPE optionalString VALUES bfd gold lld mold)
  qt_commandline_option(ltcg TYPE boolean)
++qt_commandline_option(cfguard TYPE boolean)
  qt_commandline_option(intelcet TYPE boolean)
 +qt_commandline_option(spectre TYPE boolean)
 +qt_commandline_option(ehcont TYPE boolean)

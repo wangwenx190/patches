@@ -1,4 +1,4 @@
-From 98528f30146409ffb0484e540e9d971bbacd7c74 Mon Sep 17 00:00:00 2001
+From b9fb0c0aeb71dca501baa0df36018df83083be0f Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Sun, 19 Jun 2022 13:06:56 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -6,71 +6,72 @@ Subject: [PATCH] wangwenx190: Custom tweaks
 Import changes list:
 
 01. MSVC: Don't embed debug symbols into binary file.
-02. All: disable debug builds.
-03. FFmpeg: Don't enable debug configuration for release builds.
+02. MSVC: Enable more optimizations.
+03. All: disable debug builds.
+04. FFmpeg: Don't enable debug configuration for release builds.
 
 Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 ---
- ports/ffmpeg/portfile.cmake                      | 2 +-
- scripts/toolchains/windows.cmake                 | 8 ++++----
- triplets/arm-uwp.cmake                           | 1 +
- triplets/arm64-windows.cmake                     | 1 +
- triplets/community/arm-android.cmake             | 2 ++
- triplets/community/arm-ios.cmake                 | 2 ++
- triplets/community/arm-linux.cmake               | 1 +
- triplets/community/arm-mingw-dynamic.cmake       | 3 ++-
- triplets/community/arm-mingw-static.cmake        | 1 +
- triplets/community/arm-neon-android.cmake        | 2 ++
- triplets/community/arm-windows-static.cmake      | 1 +
- triplets/community/arm-windows.cmake             | 1 +
- triplets/community/arm64-android.cmake           | 2 ++
- triplets/community/arm64-ios.cmake               | 2 ++
- triplets/community/arm64-linux.cmake             | 1 +
- triplets/community/arm64-mingw-dynamic.cmake     | 1 +
- triplets/community/arm64-mingw-static.cmake      | 1 +
- triplets/community/arm64-osx-dynamic.cmake       | 1 +
- triplets/community/arm64-osx.cmake               | 1 +
- triplets/community/arm64-uwp.cmake               | 1 +
- triplets/community/arm64-windows-static-md.cmake | 1 +
- triplets/community/arm64-windows-static.cmake    | 2 +-
- triplets/community/armv6-android.cmake           | 2 ++
- triplets/community/ppc64le-linux.cmake           | 1 +
- triplets/community/s390x-linux.cmake             | 1 +
- triplets/community/wasm32-emscripten.cmake       | 2 ++
- triplets/community/x64-android.cmake             | 2 ++
- triplets/community/x64-freebsd.cmake             | 1 +
- triplets/community/x64-ios.cmake                 | 2 ++
- triplets/community/x64-linux-dynamic.cmake       | 1 +
- triplets/community/x64-linux-release.cmake       | 6 ------
- triplets/community/x64-mingw-dynamic.cmake       | 3 ++-
- triplets/community/x64-mingw-static.cmake        | 1 +
- triplets/community/x64-openbsd.cmake             | 1 +
- triplets/community/x64-osx-dynamic.cmake         | 1 +
- triplets/community/x64-osx-release.cmake         | 7 -------
- triplets/community/x64-windows-release.cmake     | 4 ----
- triplets/community/x64-windows-static-md.cmake   | 1 +
- triplets/community/x86-android.cmake             | 2 ++
- triplets/community/x86-freebsd.cmake             | 1 +
- triplets/community/x86-ios.cmake                 | 2 ++
- triplets/community/x86-mingw-dynamic.cmake       | 3 ++-
- triplets/community/x86-mingw-static.cmake        | 1 +
- triplets/community/x86-uwp.cmake                 | 1 +
- triplets/community/x86-windows-static-md.cmake   | 1 +
- triplets/community/x86-windows-static.cmake      | 3 ++-
- triplets/community/x86-windows-v120.cmake        | 2 ++
- triplets/x64-linux.cmake                         | 1 +
- triplets/x64-osx.cmake                           | 1 +
- triplets/x64-uwp.cmake                           | 1 +
- triplets/x64-windows-static.cmake                | 2 +-
- triplets/x64-windows.cmake                       | 2 +-
- triplets/x86-windows.cmake                       | 2 +-
- 53 files changed, 69 insertions(+), 30 deletions(-)
+ ports/ffmpeg/portfile.cmake                      |  2 +-
+ scripts/toolchains/windows.cmake                 | 14 +++++++-------
+ triplets/arm-uwp.cmake                           |  1 +
+ triplets/arm64-windows.cmake                     |  1 +
+ triplets/community/arm-android.cmake             |  2 ++
+ triplets/community/arm-ios.cmake                 |  2 ++
+ triplets/community/arm-linux.cmake               |  1 +
+ triplets/community/arm-mingw-dynamic.cmake       |  3 ++-
+ triplets/community/arm-mingw-static.cmake        |  1 +
+ triplets/community/arm-neon-android.cmake        |  2 ++
+ triplets/community/arm-windows-static.cmake      |  1 +
+ triplets/community/arm-windows.cmake             |  1 +
+ triplets/community/arm64-android.cmake           |  2 ++
+ triplets/community/arm64-ios.cmake               |  2 ++
+ triplets/community/arm64-linux.cmake             |  1 +
+ triplets/community/arm64-mingw-dynamic.cmake     |  1 +
+ triplets/community/arm64-mingw-static.cmake      |  1 +
+ triplets/community/arm64-osx-dynamic.cmake       |  1 +
+ triplets/community/arm64-osx.cmake               |  1 +
+ triplets/community/arm64-uwp.cmake               |  1 +
+ triplets/community/arm64-windows-static-md.cmake |  1 +
+ triplets/community/arm64-windows-static.cmake    |  2 +-
+ triplets/community/armv6-android.cmake           |  2 ++
+ triplets/community/ppc64le-linux.cmake           |  1 +
+ triplets/community/s390x-linux.cmake             |  1 +
+ triplets/community/wasm32-emscripten.cmake       |  2 ++
+ triplets/community/x64-android.cmake             |  2 ++
+ triplets/community/x64-freebsd.cmake             |  1 +
+ triplets/community/x64-ios.cmake                 |  2 ++
+ triplets/community/x64-linux-dynamic.cmake       |  1 +
+ triplets/community/x64-linux-release.cmake       |  6 ------
+ triplets/community/x64-mingw-dynamic.cmake       |  3 ++-
+ triplets/community/x64-mingw-static.cmake        |  1 +
+ triplets/community/x64-openbsd.cmake             |  1 +
+ triplets/community/x64-osx-dynamic.cmake         |  1 +
+ triplets/community/x64-osx-release.cmake         |  7 -------
+ triplets/community/x64-windows-release.cmake     |  4 ----
+ triplets/community/x64-windows-static-md.cmake   |  1 +
+ triplets/community/x86-android.cmake             |  2 ++
+ triplets/community/x86-freebsd.cmake             |  1 +
+ triplets/community/x86-ios.cmake                 |  2 ++
+ triplets/community/x86-mingw-dynamic.cmake       |  3 ++-
+ triplets/community/x86-mingw-static.cmake        |  1 +
+ triplets/community/x86-uwp.cmake                 |  1 +
+ triplets/community/x86-windows-static-md.cmake   |  1 +
+ triplets/community/x86-windows-static.cmake      |  3 ++-
+ triplets/community/x86-windows-v120.cmake        |  2 ++
+ triplets/x64-linux.cmake                         |  1 +
+ triplets/x64-osx.cmake                           |  1 +
+ triplets/x64-uwp.cmake                           |  1 +
+ triplets/x64-windows-static.cmake                |  2 +-
+ triplets/x64-windows.cmake                       |  2 +-
+ triplets/x86-windows.cmake                       |  2 +-
+ 53 files changed, 72 insertions(+), 33 deletions(-)
  delete mode 100644 triplets/community/x64-linux-release.cmake
  delete mode 100644 triplets/community/x64-osx-release.cmake
  delete mode 100644 triplets/community/x64-windows-release.cmake
 
 diff --git a/ports/ffmpeg/portfile.cmake b/ports/ffmpeg/portfile.cmake
-index b7178acdc..2697d7bd0 100644
+index 35bac875b..96c9247f6 100644
 --- a/ports/ffmpeg/portfile.cmake
 +++ b/ports/ffmpeg/portfile.cmake
 @@ -42,7 +42,7 @@ else()
@@ -83,10 +84,19 @@ index b7178acdc..2697d7bd0 100644
  if(VCPKG_TARGET_IS_WINDOWS)
      vcpkg_acquire_msys(MSYS_ROOT PACKAGES automake1.16)
 diff --git a/scripts/toolchains/windows.cmake b/scripts/toolchains/windows.cmake
-index 03a142bab..6bc22671e 100644
+index 03a142bab..35ba68898 100644
 --- a/scripts/toolchains/windows.cmake
 +++ b/scripts/toolchains/windows.cmake
-@@ -62,10 +62,10 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
+@@ -51,7 +51,7 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
+         set(CHARSET_FLAG)
+     endif()
+ 
+-    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc /MP ${VCPKG_CXX_FLAGS}" CACHE STRING "")
++    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc /MP /Zc:__cplusplus ${VCPKG_CXX_FLAGS}" CACHE STRING "")
+     set(CMAKE_C_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /MP ${VCPKG_C_FLAGS}" CACHE STRING "")
+ 
+     if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64ec")
+@@ -62,14 +62,14 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
  
      unset(CHARSET_FLAG)
  
@@ -96,11 +106,17 @@ index 03a142bab..6bc22671e 100644
 -    set(CMAKE_C_FLAGS_RELEASE "${VCPKG_CRT_LINK_FLAG_PREFIX} /O2 /Oi /Gy /DNDEBUG /Z7 ${VCPKG_C_FLAGS_RELEASE}" CACHE STRING "")
 +    set(CMAKE_CXX_FLAGS_DEBUG "/D_DEBUG ${VCPKG_CRT_LINK_FLAG_PREFIX}d /Zi /Ob0 /Od /RTC1 ${VCPKG_CXX_FLAGS_DEBUG}" CACHE STRING "")
 +    set(CMAKE_C_FLAGS_DEBUG "/D_DEBUG ${VCPKG_CRT_LINK_FLAG_PREFIX}d /Zi /Ob0 /Od /RTC1 ${VCPKG_C_FLAGS_DEBUG}" CACHE STRING "")
-+    set(CMAKE_CXX_FLAGS_RELEASE "${VCPKG_CRT_LINK_FLAG_PREFIX} /O2 /Oi /Gy /DNDEBUG /Zi ${VCPKG_CXX_FLAGS_RELEASE}" CACHE STRING "")
-+    set(CMAKE_C_FLAGS_RELEASE "${VCPKG_CRT_LINK_FLAG_PREFIX} /O2 /Oi /Gy /DNDEBUG /Zi ${VCPKG_C_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_CXX_FLAGS_RELEASE "${VCPKG_CRT_LINK_FLAG_PREFIX} /O2 /Ob3 /Oi /Gy /Gw /DNDEBUG /fp:fast /QIntel-jcc-erratum /Zi /Zc:inline ${VCPKG_CXX_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_C_FLAGS_RELEASE "${VCPKG_CRT_LINK_FLAG_PREFIX} /O2 /Ob3 /Oi /Gy /Gw /DNDEBUG /fp:fast /QIntel-jcc-erratum /Zi /Zc:inline ${VCPKG_C_FLAGS_RELEASE}" CACHE STRING "")
  
      string(APPEND CMAKE_STATIC_LINKER_FLAGS_RELEASE_INIT " /nologo ")
-     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
+-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
+-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
+ 
+     string(APPEND CMAKE_STATIC_LINKER_FLAGS_DEBUG_INIT " /nologo ")
+     string(APPEND CMAKE_SHARED_LINKER_FLAGS_DEBUG_INIT " /nologo ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_DEBUG} ")
 diff --git a/triplets/arm-uwp.cmake b/triplets/arm-uwp.cmake
 index d632c2211..d233bb250 100644
 --- a/triplets/arm-uwp.cmake

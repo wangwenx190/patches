@@ -1,4 +1,4 @@
-From 870615a7a6d64b9756408e3674cf15f6679aeb8c Mon Sep 17 00:00:00 2001
+From 9132302f9b1c41e3d6d1157ddba6698c019f0452 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -649,7 +649,7 @@ index 5450b2562c..748bc8ba6d 100644
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index d3d977498f..391de2eb82 100644
+index 3d3c26ab16..d5d7c20887 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
 @@ -494,9 +494,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
@@ -663,7 +663,7 @@ index d3d977498f..391de2eb82 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -777,12 +776,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -779,12 +778,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -676,7 +676,7 @@ index d3d977498f..391de2eb82 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1307,6 +1300,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1309,6 +1302,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
@@ -1880,7 +1880,7 @@ index d8319c120b..f1a7553db6 100644
  qt_configure_add_summary_entry(ARGS "gif")
  qt_configure_add_summary_entry(ARGS "ico")
 diff --git a/src/gui/image/qimage.cpp b/src/gui/image/qimage.cpp
-index dc2d936fda..52d6ec16e5 100644
+index 4aff92ac80..d7fadced5c 100644
 --- a/src/gui/image/qimage.cpp
 +++ b/src/gui/image/qimage.cpp
 @@ -44,6 +44,10 @@
@@ -1894,7 +1894,7 @@ index dc2d936fda..52d6ec16e5 100644
  QT_BEGIN_NAMESPACE
  
  using namespace Qt::StringLiterals;
-@@ -4858,13 +4862,13 @@ QImage Q_TRACE_INSTRUMENT(qtgui) QImage::transformed(const QTransform &matrix, Q
+@@ -4863,13 +4867,13 @@ QImage Q_TRACE_INSTRUMENT(qtgui) QImage::transformed(const QTransform &matrix, Q
  #endif
              ) {
              if (mat.m11() < 0.0F && mat.m22() < 0.0F) { // horizontal/vertical flip
@@ -1912,7 +1912,7 @@ index dc2d936fda..52d6ec16e5 100644
              }
          }
      }
-@@ -4981,6 +4985,43 @@ void QImage::setColorSpace(const QColorSpace &colorSpace)
+@@ -4986,6 +4990,43 @@ void QImage::setColorSpace(const QColorSpace &colorSpace)
          d->colorSpace = colorSpace;
  }
  
@@ -1956,7 +1956,7 @@ index dc2d936fda..52d6ec16e5 100644
  /*!
      \since 5.14
  
-@@ -4994,6 +5035,34 @@ void QImage::convertToColorSpace(const QColorSpace &colorSpace)
+@@ -4999,6 +5040,34 @@ void QImage::convertToColorSpace(const QColorSpace &colorSpace)
  {
      if (!d)
          return;
@@ -2268,7 +2268,7 @@ index e69f369dbe..359a9b949b 100644
          painter->save();
          painter->translate(0, pos.y() + 1);
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index d9f323eb1a..a6dce3e091 100644
+index 15b713192e..b19f8afee9 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -8,6 +8,8 @@
@@ -2632,7 +2632,7 @@ index d9f323eb1a..a6dce3e091 100644
          ctx->Release();
          if (!supports11_1) {
              qWarning("ID3D11DeviceContext1 not supported");
-@@ -282,7 +377,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -296,7 +391,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          Q_ASSERT(dev && context);
          featureLevel = dev->GetFeatureLevel();
          IDXGIDevice *dxgiDev = nullptr;
@@ -2641,7 +2641,7 @@ index d9f323eb1a..a6dce3e091 100644
              IDXGIAdapter *adapter = nullptr;
              if (SUCCEEDED(dxgiDev->GetAdapter(&adapter))) {
                  DXGI_ADAPTER_DESC desc;
-@@ -298,7 +393,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
+@@ -312,7 +407,7 @@ bool QRhiD3D11::create(QRhi::Flags flags)
          qCDebug(QRHI_LOG_INFO, "Using imported device %p", dev);
      }
  
@@ -2650,7 +2650,7 @@ index d9f323eb1a..a6dce3e091 100644
          annotations = nullptr;
  
      deviceLost = false;
-@@ -362,7 +457,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
+@@ -376,7 +471,7 @@ void QRhiD3D11::reportLiveObjects(ID3D11Device *device)
  {
      // this works only when params.enableDebugLayer was true
      ID3D11Debug *debug;
@@ -2659,7 +2659,7 @@ index d9f323eb1a..a6dce3e091 100644
          debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
          debug->Release();
      }
-@@ -2851,7 +2946,7 @@ bool QD3D11Buffer::create()
+@@ -2865,7 +2960,7 @@ bool QD3D11Buffer::create()
      }
  
      if (!m_objectName.isEmpty())
@@ -2668,7 +2668,7 @@ index d9f323eb1a..a6dce3e091 100644
  
      generation += 1;
      rhiD->registerResource(this);
-@@ -3020,7 +3115,7 @@ bool QD3D11RenderBuffer::create()
+@@ -3034,7 +3129,7 @@ bool QD3D11RenderBuffer::create()
      }
  
      if (!m_objectName.isEmpty())
@@ -2677,7 +2677,7 @@ index d9f323eb1a..a6dce3e091 100644
  
      generation += 1;
      rhiD->registerResource(this);
-@@ -3315,7 +3410,7 @@ bool QD3D11Texture::create()
+@@ -3329,7 +3424,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -2686,7 +2686,7 @@ index d9f323eb1a..a6dce3e091 100644
                                  m_objectName.constData());
      } else if (!is3D) {
          D3D11_TEXTURE2D_DESC desc = {};
-@@ -3336,7 +3431,7 @@ bool QD3D11Texture::create()
+@@ -3350,7 +3445,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -2695,7 +2695,7 @@ index d9f323eb1a..a6dce3e091 100644
      } else {
          D3D11_TEXTURE3D_DESC desc = {};
          desc.Width = UINT(size.width());
-@@ -3355,7 +3450,7 @@ bool QD3D11Texture::create()
+@@ -3369,7 +3464,7 @@ bool QD3D11Texture::create()
              return false;
          }
          if (!m_objectName.isEmpty())
@@ -2704,7 +2704,7 @@ index d9f323eb1a..a6dce3e091 100644
      }
  
      if (!finishCreate())
-@@ -4729,7 +4824,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+@@ -4743,7 +4838,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
          }
      }
      if (currentOutput) {
@@ -2713,7 +2713,7 @@ index d9f323eb1a..a6dce3e091 100644
          currentOutput->Release();
      }
      return ok;
-@@ -4757,6 +4852,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
+@@ -4771,6 +4866,8 @@ bool QD3D11SwapChain::isFormatSupported(Format f)
      }
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -2722,7 +2722,7 @@ index d9f323eb1a..a6dce3e091 100644
      DXGI_OUTPUT_DESC1 desc1;
      if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &desc1))
          return desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-@@ -4769,6 +4866,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
+@@ -4783,6 +4880,8 @@ QRhiSwapChainHdrInfo QD3D11SwapChain::hdrInfo()
      QRhiSwapChainHdrInfo info = QRhiSwapChain::hdrInfo();
      if (m_format != QRhiSwapChain::SDR && m_window) {
          QRHI_RES_RHI(QRhiD3D11);
@@ -2731,7 +2731,7 @@ index d9f323eb1a..a6dce3e091 100644
          DXGI_OUTPUT_DESC1 hdrOutputDesc;
          if (outputDesc1ForWindow(m_window, rhiD->activeAdapter, &hdrOutputDesc)) {
              info.isHardCodedDefaults = false;
-@@ -4826,12 +4925,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+@@ -4840,12 +4939,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
  
  bool QRhiD3D11::ensureDirectCompositionDevice()
  {
@@ -2751,7 +2751,7 @@ index d9f323eb1a..a6dce3e091 100644
      if (FAILED(hr)) {
          qWarning("Failed to Direct Composition device: %s",
              qPrintable(QSystemError::windowsComString(hr)));
-@@ -4864,12 +4969,18 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4878,12 +4983,18 @@ bool QD3D11SwapChain::createOrResize()
      HRESULT hr;
  
      QRHI_RES_RHI(QRhiD3D11);
@@ -2770,7 +2770,7 @@ index d9f323eb1a..a6dce3e091 100644
                      qWarning("Failed to create Direct Compsition target for the window: %s",
                               qPrintable(QSystemError::windowsComString(hr)));
                  }
-@@ -4877,10 +4988,15 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4891,10 +5002,15 @@ bool QD3D11SwapChain::createOrResize()
              if (dcompTarget && !dcompVisual) {
                  hr = rhiD->dcompDevice->CreateVisual(&dcompVisual);
                  if (FAILED(hr)) {
@@ -2786,7 +2786,7 @@ index d9f323eb1a..a6dce3e091 100644
          }
          // simple consistency check
          if (window->requestedFormat().alphaBufferSize() <= 0)
-@@ -4895,7 +5011,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4909,7 +5025,7 @@ bool QD3D11SwapChain::createOrResize()
      // ALLOW_TEARING, and ALLOW_TEARING is not compatible with it at all so the
      // flag must not be set then. Whereas for flip we should use it, if
      // supported, to get better results for 'unthrottled' presentation.
@@ -2795,7 +2795,7 @@ index d9f323eb1a..a6dce3e091 100644
          swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
  
      if (!swapChain) {
-@@ -4903,121 +5019,145 @@ bool QD3D11SwapChain::createOrResize()
+@@ -4917,121 +5033,145 @@ bool QD3D11SwapChain::createOrResize()
          colorFormat = DEFAULT_FORMAT;
          srgbAdjustedColorFormat = m_flags.testFlag(sRGB) ? DEFAULT_SRGB_FORMAT : DEFAULT_FORMAT;
  
@@ -3033,7 +3033,7 @@ index d9f323eb1a..a6dce3e091 100644
                                        colorFormat, swapChainFlags);
          if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
              qWarning("Device loss detected in ResizeBuffers()");
-@@ -5044,7 +5184,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -5058,7 +5198,7 @@ bool QD3D11SwapChain::createOrResize()
      // swapchain."
  
      // So just query index 0 once (per resize) and be done with it.
@@ -3043,7 +3043,7 @@ index d9f323eb1a..a6dce3e091 100644
          qWarning("Failed to query swapchain backbuffer: %s",
              qPrintable(QSystemError::windowsComString(hr)));
 diff --git a/src/gui/rhi/qrhid3d11_p_p.h b/src/gui/rhi/qrhid3d11_p_p.h
-index 8b56ccbf33..993f1c87ed 100644
+index b6f8b15e16..bfd8b6f75e 100644
 --- a/src/gui/rhi/qrhid3d11_p_p.h
 +++ b/src/gui/rhi/qrhid3d11_p_p.h
 @@ -737,8 +737,9 @@ public:
@@ -5333,7 +5333,7 @@ index 6fba9e55c1..64b38c594a 100644
      }
      const auto setting = QWinRegistryKey(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Themes\Personalize)")
 diff --git a/src/plugins/platforms/windows/qwindowswindow.cpp b/src/plugins/platforms/windows/qwindowswindow.cpp
-index d0107145af..a8f5603e04 100644
+index c26e3bc1a8..be009ddfc6 100644
 --- a/src/plugins/platforms/windows/qwindowswindow.cpp
 +++ b/src/plugins/platforms/windows/qwindowswindow.cpp
 @@ -22,6 +22,7 @@
@@ -5565,7 +5565,7 @@ index d0107145af..a8f5603e04 100644
  }
  
  QSurfaceFormat QWindowsWindow::format() const
-@@ -2015,7 +2062,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
+@@ -2019,7 +2066,7 @@ void QWindowsWindow::handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam)
  
  void QWindowsWindow::handleDpiChangedAfterParent(HWND hwnd)
  {
@@ -5574,7 +5574,7 @@ index d0107145af..a8f5603e04 100644
      const qreal scale = qreal(dpi) / qreal(savedDpi());
      setSavedDpi(dpi);
  
-@@ -2158,7 +2205,7 @@ void QWindowsWindow::handleResized(int wParam, LPARAM lParam)
+@@ -2162,7 +2209,7 @@ void QWindowsWindow::handleResized(int wParam, LPARAM lParam)
          int correctHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
  
          if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
@@ -5583,7 +5583,7 @@ index d0107145af..a8f5603e04 100644
              correctLeft -= borderWidth;
              correctTop -= borderWidth;
              correctWidth += borderWidth * 2;
-@@ -2368,13 +2415,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
+@@ -2372,13 +2419,22 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
          return false;
      PAINTSTRUCT ps;
  
@@ -5608,7 +5608,7 @@ index d0107145af..a8f5603e04 100644
      // If the a window is obscured by another window (such as a child window)
      // we still need to send isExposed=true, for compatibility.
      // Our tests depend on it.
-@@ -3015,7 +3071,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
+@@ -3019,7 +3075,7 @@ bool QWindowsWindow::handleNonClientHitTest(const QPoint &globalPos, LRESULT *re
              return true;
          }
          if (localPos.y() < 0) {
@@ -5617,7 +5617,7 @@ index d0107145af..a8f5603e04 100644
              if (localPos.y() < topResizeBarPos) {
                  *result = HTCAPTION; // Extend caption over top resize bar, let's user move the window.
                  return true;
-@@ -3205,10 +3261,12 @@ enum : WORD {
+@@ -3209,10 +3265,12 @@ enum : WORD {
  
  static bool queryDarkBorder(HWND hwnd)
  {
@@ -5632,7 +5632,7 @@ index d0107145af..a8f5603e04 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to retrieve dark window border setting.", __FUNCTION__);
      return result == TRUE;
-@@ -3216,10 +3274,12 @@ static bool queryDarkBorder(HWND hwnd)
+@@ -3220,10 +3278,12 @@ static bool queryDarkBorder(HWND hwnd)
  
  bool QWindowsWindow::setDarkBorderToWindow(HWND hwnd, bool d)
  {
@@ -5647,7 +5647,7 @@ index d0107145af..a8f5603e04 100644
      if (!ok)
          qCWarning(lcQpaWindow, "%s: Unable to set %s window border.", __FUNCTION__, d ? "dark" : "light");
      return ok;
-@@ -3340,6 +3400,9 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3344,6 +3404,9 @@ void QWindowsWindow::registerTouchWindow()
      if ((QWindowsContext::instance()->systemInfo() & QWindowsContext::SI_SupportsTouch) == 0)
          return;
  
@@ -5657,7 +5657,7 @@ index d0107145af..a8f5603e04 100644
      // Initially register or re-register to change the flags
      const auto touchTypes = QWindowsIntegration::instance()->touchWindowTouchType();
      if (testFlag(TouchRegistered)) {
-@@ -3353,7 +3416,7 @@ void QWindowsWindow::registerTouchWindow()
+@@ -3357,7 +3420,7 @@ void QWindowsWindow::registerTouchWindow()
          touchFlags |= TWF_FINETOUCH;
      if (touchTypes.testFlag(TouchWindowTouchType::WantPalmTouch))
          touchFlags |= TWF_WANTPALM;
@@ -6632,7 +6632,7 @@ index 45f26a1ebf..71dfc15b4d 100644
      QPoint pressedPos;
      bool pressed;
 diff --git a/src/widgets/kernel/qwidget.cpp b/src/widgets/kernel/qwidget.cpp
-index cb432c84bc..0232f2b0ca 100644
+index cde0542eee..317d56268d 100644
 --- a/src/widgets/kernel/qwidget.cpp
 +++ b/src/widgets/kernel/qwidget.cpp
 @@ -5134,6 +5134,17 @@ void QWidget::render(QPainter *painter, const QPoint &targetOffset,

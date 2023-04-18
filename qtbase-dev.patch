@@ -1,4 +1,4 @@
-From 9132302f9b1c41e3d6d1157ddba6698c019f0452 Mon Sep 17 00:00:00 2001
+From f71a191325032faac5e6b9957c48873eb457372c Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -76,7 +76,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../socket/qnativesocketengine_win.cpp        |  21 +-
  src/openglwidgets/qopenglwidget.cpp           |  41 +-
  .../imageformats/jpeg/qjpeghandler.cpp        |   3 +
- .../qnetworklistmanagerevents.cpp             |  54 +-
+ .../qnetworklistmanagerevents.cpp             |  64 ++-
  src/plugins/platforms/CMakeLists.txt          |   9 -
  src/plugins/platforms/windows/CMakeLists.txt  |   6 +-
  .../platforms/windows/qwin10helpers.cpp       |  43 +-
@@ -108,7 +108,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
  src/widgets/kernel/qwidget.cpp                |  18 +
  src/widgets/widgets/qabstractscrollarea.cpp   |   7 +-
- 87 files changed, 2832 insertions(+), 846 deletions(-)
+ 87 files changed, 2837 insertions(+), 851 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/FindLCMS2.cmake
  create mode 100644 cmake/VC-LTL.cmake
@@ -294,10 +294,10 @@ index b5b49ab78a..2a756b229b 100644
 +    set(QT_CFLAGS_SSE2 "-O2 -msimd128 -msse -msse2")
  endif()
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index 2208c28f34..b8e232d389 100644
+index b3c1f00345..7019661a23 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
-@@ -260,6 +260,11 @@ if (MSVC)
+@@ -275,6 +275,11 @@ if (MSVC)
              #-Zc:preprocessor # breaks build due to bug in default Windows SDK 10.0.19041
          )
      endif()
@@ -309,7 +309,7 @@ index 2208c28f34..b8e232d389 100644
  
      target_compile_options(PlatformCommonInternal INTERFACE
          -Zc:wchar_t
-@@ -267,13 +272,19 @@ if (MSVC)
+@@ -282,13 +287,19 @@ if (MSVC)
      )
  
      target_compile_options(PlatformCommonInternal INTERFACE
@@ -331,7 +331,7 @@ index 2208c28f34..b8e232d389 100644
  endif()
  
  if(MINGW)
-@@ -284,18 +295,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
+@@ -299,18 +310,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
      target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
  endif()
  
@@ -596,10 +596,10 @@ index 0000000000..92532d72dc
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
 diff --git a/configure.cmake b/configure.cmake
-index 53b397ab8b..85951f844a 100644
+index 86bdd07ae8..359a307f2e 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1046,10 +1046,22 @@ qt_feature("relocatable" PRIVATE
+@@ -1043,10 +1043,22 @@ qt_feature("relocatable" PRIVATE
      AUTODETECT QT_FEATURE_shared
      CONDITION QT_FEATURE_dlopen OR WIN32 OR NOT QT_FEATURE_shared
  )
@@ -622,7 +622,7 @@ index 53b397ab8b..85951f844a 100644
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1089,7 +1101,10 @@ qt_configure_add_summary_entry(
+@@ -1084,7 +1096,10 @@ qt_configure_add_summary_entry(
  qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
@@ -634,7 +634,7 @@ index 53b397ab8b..85951f844a 100644
      ARGS "wasm-simd128"
      CONDITION ( TEST_architecture_arch STREQUAL wasm )
 diff --git a/qt_cmdline.cmake b/qt_cmdline.cmake
-index 5450b2562c..748bc8ba6d 100644
+index 35209395df..28d36b31b7 100644
 --- a/qt_cmdline.cmake
 +++ b/qt_cmdline.cmake
 @@ -73,7 +73,10 @@ qt_commandline_option(openssl-linked TYPE void NAME openssl VALUE linked)
@@ -645,11 +645,11 @@ index 5450b2562c..748bc8ba6d 100644
  qt_commandline_option(intelcet TYPE boolean)
 +qt_commandline_option(spectre TYPE boolean)
 +qt_commandline_option(ehcont TYPE boolean)
- # special case begin
  qt_commandline_option(make TYPE addString VALUES examples libs tests tools
                        benchmarks manual-tests minimal-static-tests)
+ qt_commandline_option(make-tool TYPE string)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index 3d3c26ab16..d5d7c20887 100644
+index 9276b4f8b3..59a92e8c06 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
 @@ -494,9 +494,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
@@ -663,7 +663,7 @@ index 3d3c26ab16..d5d7c20887 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -779,12 +778,6 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -783,12 +782,6 @@ qt_internal_extend_target(Core CONDITION WIN32
          text/qlocale_win.cpp
  )
  
@@ -676,12 +676,12 @@ index 3d3c26ab16..d5d7c20887 100644
  qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
      SOURCES
          text/qcollator_icu.cpp
-@@ -1309,6 +1302,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1314,6 +1307,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
 +    thread/qmutex_win.cpp
-     PROPERTIES HEADER_FILE_ONLY ON)  # special case: These files are included by qmutex.cpp!
+     PROPERTIES HEADER_FILE_ONLY ON)
  
  # Remove QT_NO_CAST_TO_ASCII to ensure that the symbols are included in the library.
 diff --git a/src/corelib/global/qlibraryinfo.cpp b/src/corelib/global/qlibraryinfo.cpp
@@ -1144,7 +1144,7 @@ index 13b8fe224a..581e2695fe 100644
      const auto process_token = HANDLE(quintptr(-4));
  
 diff --git a/src/corelib/kernel/qcoreapplication.cpp b/src/corelib/kernel/qcoreapplication.cpp
-index f9163ac306..bac0f84f88 100644
+index 064a323507..81b2649d60 100644
 --- a/src/corelib/kernel/qcoreapplication.cpp
 +++ b/src/corelib/kernel/qcoreapplication.cpp
 @@ -37,6 +37,7 @@
@@ -1847,18 +1847,18 @@ index b6ecc5f333..d15490b26e 100644
  
  qt_internal_extend_target(Gui CONDITION MINGW AND WIN32
 diff --git a/src/gui/configure.cmake b/src/gui/configure.cmake
-index d8319c120b..f1a7553db6 100644
+index 02a80130d5..9ef5d59359 100644
 --- a/src/gui/configure.cmake
 +++ b/src/gui/configure.cmake
-@@ -58,6 +58,7 @@ qt_find_package(WrapOpenGL PROVIDED_TARGETS WrapOpenGL::WrapOpenGL MODULE_NAME g
- qt_find_package(GLESv2 PROVIDED_TARGETS GLESv2::GLESv2 MODULE_NAME gui QMAKE_LIB opengl_es2)
+@@ -60,6 +60,7 @@ qt_find_package(GLESv2 PROVIDED_TARGETS GLESv2::GLESv2 MODULE_NAME gui QMAKE_LIB
  qt_find_package(Tslib PROVIDED_TARGETS PkgConfig::Tslib MODULE_NAME gui QMAKE_LIB tslib)
- qt_find_package(WrapVulkanHeaders PROVIDED_TARGETS WrapVulkanHeaders::WrapVulkanHeaders MODULE_NAME gui QMAKE_LIB vulkan MARK_OPTIONAL) # special case
+ qt_find_package(WrapVulkanHeaders PROVIDED_TARGETS WrapVulkanHeaders::WrapVulkanHeaders
+     MODULE_NAME gui QMAKE_LIB vulkan MARK_OPTIONAL)
 +qt_find_package(LCMS2 PROVIDED_TARGETS LCMS2::LCMS2 MODULE_NAME gui QMAKE_LIB lcms2)
  if((LINUX) OR QT_FIND_ALL_PACKAGES_ALWAYS)
      qt_find_package(Wayland PROVIDED_TARGETS Wayland::Server MODULE_NAME gui QMAKE_LIB wayland_server)
  endif()
-@@ -672,6 +673,12 @@ qt_feature("fontconfig" PUBLIC PRIVATE
+@@ -668,6 +669,12 @@ qt_feature("fontconfig" PUBLIC PRIVATE
      CONDITION NOT WIN32 AND QT_FEATURE_system_freetype AND Fontconfig_FOUND
  )
  qt_feature_definition("fontconfig" "QT_NO_FONTCONFIG" NEGATE VALUE "1")
@@ -1871,7 +1871,7 @@ index d8319c120b..f1a7553db6 100644
  qt_feature("gbm"
      LABEL "GBM"
      CONDITION gbm_FOUND
-@@ -1232,6 +1239,7 @@ qt_configure_add_summary_entry(ARGS "system-freetype")
+@@ -1228,6 +1235,7 @@ qt_configure_add_summary_entry(ARGS "system-freetype")
  qt_configure_add_summary_entry(ARGS "harfbuzz")
  qt_configure_add_summary_entry(ARGS "system-harfbuzz")
  qt_configure_add_summary_entry(ARGS "fontconfig")
@@ -3058,10 +3058,10 @@ index b6f8b15e16..bfd8b6f75e 100644
      bool deviceLost = false;
      QRhiD3D11NativeHandles nativeHandlesStruct;
 diff --git a/src/gui/rhi/qrhid3d12.cpp b/src/gui/rhi/qrhid3d12.cpp
-index 20d01db1fa..ada9497b37 100644
+index d80fe8a406..434ed8e53e 100644
 --- a/src/gui/rhi/qrhid3d12.cpp
 +++ b/src/gui/rhi/qrhid3d12.cpp
-@@ -79,8 +79,54 @@ QT_BEGIN_NAMESPACE
+@@ -84,8 +84,54 @@ QT_BEGIN_NAMESPACE
      \l{QRhi::endOffscreenFrame()}{endOffscreenFrame()} pair.
   */
  
@@ -3117,7 +3117,7 @@ index 20d01db1fa..ada9497b37 100644
  
  QRhiD3D12::QRhiD3D12(QRhiD3D12InitParams *params, QRhiD3D12NativeHandles *importParams)
  {
-@@ -127,12 +173,18 @@ static inline QD3D12RenderTargetData *rtData(QRhiRenderTarget *rt)
+@@ -132,12 +178,18 @@ static inline QD3D12RenderTargetData *rtData(QRhiRenderTarget *rt)
  
  bool QRhiD3D12::create(QRhi::Flags flags)
  {
@@ -3137,7 +3137,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("CreateDXGIFactory2() failed to create DXGI factory: %s",
                   qPrintable(QSystemError::windowsComString(hr)));
-@@ -141,7 +193,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -146,7 +198,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
  
      supportsAllowTearing = false;
      IDXGIFactory5 *factory5 = nullptr;
@@ -3146,7 +3146,7 @@ index 20d01db1fa..ada9497b37 100644
          BOOL allowTearing = false;
          if (SUCCEEDED(factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
              supportsAllowTearing = allowTearing;
-@@ -150,7 +202,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -155,7 +207,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
  
      if (debugLayer) {
          ID3D12Debug1 *debug = nullptr;
@@ -3155,7 +3155,7 @@ index 20d01db1fa..ada9497b37 100644
              qCDebug(QRHI_LOG_INFO, "Enabling D3D12 debug layer");
              debug->EnableDebugLayer();
              debug->Release();
-@@ -220,10 +272,8 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -225,10 +277,8 @@ bool QRhiD3D12::create(QRhi::Flags flags)
          if (minimumFeatureLevel == 0)
              minimumFeatureLevel = MIN_FEATURE_LEVEL;
  
@@ -3168,7 +3168,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to create D3D12 device: %s", qPrintable(QSystemError::windowsComString(hr)));
              return false;
-@@ -251,7 +301,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -256,7 +306,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
  
      if (debugLayer) {
          ID3D12InfoQueue *infoQueue;
@@ -3177,7 +3177,7 @@ index 20d01db1fa..ada9497b37 100644
              if (qEnvironmentVariableIntValue("QT_D3D_DEBUG_BREAK")) {
                  infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
                  infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-@@ -280,14 +330,14 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -285,14 +335,14 @@ bool QRhiD3D12::create(QRhi::Flags flags)
          D3D12_COMMAND_QUEUE_DESC queueDesc = {};
          queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
          queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
@@ -3194,7 +3194,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create fence: %s", qPrintable(QSystemError::windowsComString(hr)));
          return false;
-@@ -297,8 +347,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
+@@ -302,8 +352,7 @@ bool QRhiD3D12::create(QRhi::Flags flags)
  
      for (int i = 0; i < QD3D12_FRAMES_IN_FLIGHT; ++i) {
          hr = dev->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -3204,7 +3204,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to create command allocator: %s", qPrintable(QSystemError::windowsComString(hr)));
              return false;
-@@ -1794,7 +1843,7 @@ bool QD3D12DescriptorHeap::create(ID3D12Device *device,
+@@ -1827,7 +1876,7 @@ bool QD3D12DescriptorHeap::create(ID3D12Device *device,
      heapDesc.NumDescriptors = capacity;
      heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAGS(heapFlags);
  
@@ -3213,7 +3213,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create descriptor heap: %s", qPrintable(QSystemError::windowsComString(hr)));
          heap = nullptr;
-@@ -1981,8 +2030,7 @@ bool QD3D12StagingArea::create(QRhiD3D12 *rhi, quint32 capacity, D3D12_HEAP_TYPE
+@@ -2014,8 +2063,7 @@ bool QD3D12StagingArea::create(QRhiD3D12 *rhi, quint32 capacity, D3D12_HEAP_TYPE
                                           D3D12_RESOURCE_STATES(state),
                                           nullptr,
                                           &allocation,
@@ -3223,7 +3223,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create buffer for staging area: %s",
                   qPrintable(QSystemError::windowsComString(hr)));
-@@ -2446,6 +2494,9 @@ QD3D12Descriptor QD3D12SamplerManager::getShaderVisibleDescriptor(const D3D12_SA
+@@ -2479,6 +2527,9 @@ QD3D12Descriptor QD3D12SamplerManager::getShaderVisibleDescriptor(const D3D12_SA
  
  bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
  {
@@ -3233,7 +3233,7 @@ index 20d01db1fa..ada9497b37 100644
      this->rhiD = rhiD;
  
      D3D12_ROOT_PARAMETER1 rootParams[3] = {};
-@@ -2489,7 +2540,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+@@ -2522,7 +2573,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
      rsDesc.Desc_1_1.pStaticSamplers = &samplerDesc;
  
      ID3DBlob *signature = nullptr;
@@ -3242,7 +3242,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to serialize root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
          return false;
-@@ -2498,8 +2549,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+@@ -2531,8 +2582,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
      hr = rhiD->dev->CreateRootSignature(0,
                                          signature->GetBufferPointer(),
                                          signature->GetBufferSize(),
@@ -3252,7 +3252,7 @@ index 20d01db1fa..ada9497b37 100644
      signature->Release();
      if (FAILED(hr)) {
          qWarning("Failed to create root signature: %s",
-@@ -2514,9 +2564,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
+@@ -2547,9 +2597,7 @@ bool QD3D12MipmapGenerator::create(QRhiD3D12 *rhiD)
      psoDesc.CS.pShaderBytecode = g_csMipmap;
      psoDesc.CS.BytecodeLength = sizeof(g_csMipmap);
      ID3D12PipelineState *pso = nullptr;
@@ -3263,7 +3263,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create compute pipeline state: %s",
                   qPrintable(QSystemError::windowsComString(hr)));
-@@ -2839,8 +2887,7 @@ bool QRhiD3D12::startCommandListForCurrentFrameSlot(ID3D12GraphicsCommandList **
+@@ -2872,8 +2920,7 @@ bool QRhiD3D12::startCommandListForCurrentFrameSlot(ID3D12GraphicsCommandList **
                                              D3D12_COMMAND_LIST_TYPE_DIRECT,
                                              cmdAlloc,
                                              nullptr,
@@ -3273,7 +3273,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to create command list: %s", qPrintable(QSystemError::windowsComString(hr)));
              return false;
-@@ -3424,8 +3471,7 @@ bool QD3D12Buffer::create()
+@@ -3457,8 +3504,7 @@ bool QD3D12Buffer::create()
                                            resourceState,
                                            nullptr,
                                            &allocation,
@@ -3283,7 +3283,7 @@ index 20d01db1fa..ada9497b37 100644
              if (FAILED(hr))
                  break;
              if (!m_objectName.isEmpty()) {
-@@ -3684,8 +3730,7 @@ bool QD3D12RenderBuffer::create()
+@@ -3717,8 +3763,7 @@ bool QD3D12RenderBuffer::create()
                                                D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                &clearValue,
                                                &allocation,
@@ -3293,7 +3293,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to create color buffer: %s", qPrintable(QSystemError::windowsComString(hr)));
              return false;
-@@ -3728,8 +3773,7 @@ bool QD3D12RenderBuffer::create()
+@@ -3761,8 +3806,7 @@ bool QD3D12RenderBuffer::create()
                                                D3D12_RESOURCE_STATE_DEPTH_WRITE,
                                                &clearValue,
                                                &allocation,
@@ -3303,7 +3303,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to create depth-stencil buffer: %s", qPrintable(QSystemError::windowsComString(hr)));
              return false;
-@@ -4059,8 +4103,7 @@ bool QD3D12Texture::create()
+@@ -4092,8 +4136,7 @@ bool QD3D12Texture::create()
                                            D3D12_RESOURCE_STATE_COMMON,
                                            needsOptimizedClearValueSpecified ? &clearValue : nullptr,
                                            &allocation,
@@ -3313,7 +3313,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create texture: '%s'"
                   " Dim was %d Size was %ux%u Depth/ArraySize was %u MipLevels was %u Format was %d Sample count was %d",
-@@ -4612,6 +4655,9 @@ void QD3D12ShaderResourceBindings::visitStorageImage(QD3D12Stage s,
+@@ -4645,6 +4688,9 @@ void QD3D12ShaderResourceBindings::visitStorageImage(QD3D12Stage s,
  QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D12ShaderStageData *stageData,
                                                                       int stageCount)
  {
@@ -3323,7 +3323,7 @@ index 20d01db1fa..ada9497b37 100644
      QRHI_RES_RHI(QRhiD3D12);
  
      // It's not just that the root signature has to be tied to the pipeline
-@@ -4698,7 +4744,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
+@@ -4731,7 +4777,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
      rsDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAGS(rsFlags);
  
      ID3DBlob *signature = nullptr;
@@ -3332,7 +3332,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to serialize root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
          return {};
-@@ -4707,8 +4753,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
+@@ -4740,8 +4786,7 @@ QD3D12ObjectHandle QD3D12ShaderResourceBindings::createRootSignature(const QD3D1
      hr = rhiD->dev->CreateRootSignature(0,
                                          signature->GetBufferPointer(),
                                          signature->GetBufferSize(),
@@ -3342,7 +3342,7 @@ index 20d01db1fa..ada9497b37 100644
      signature->Release();
      if (FAILED(hr)) {
          qWarning("Failed to create root signature: %s", qPrintable(QSystemError::windowsComString(hr)));
-@@ -5290,9 +5335,7 @@ bool QD3D12GraphicsPipeline::create()
+@@ -5323,9 +5368,7 @@ bool QD3D12GraphicsPipeline::create()
      psoDesc.SampleDesc = sampleDesc;
  
      ID3D12PipelineState *pso = nullptr;
@@ -3353,7 +3353,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create graphics pipeline state: %s",
                   qPrintable(QSystemError::windowsComString(hr)));
-@@ -5396,9 +5439,7 @@ bool QD3D12ComputePipeline::create()
+@@ -5429,9 +5472,7 @@ bool QD3D12ComputePipeline::create()
      psoDesc.CS.pShaderBytecode = shaderBytecode.constData();
      psoDesc.CS.BytecodeLength = shaderBytecode.size();
      ID3D12PipelineState *pso = nullptr;
@@ -3364,7 +3364,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to create compute pipeline state: %s",
                   qPrintable(QSystemError::windowsComString(hr)));
-@@ -5661,7 +5702,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
+@@ -5694,7 +5735,7 @@ static bool output6ForWindow(QWindow *w, IDXGIAdapter1 *adapter, IDXGIOutput6 **
          }
      }
      if (currentOutput) {
@@ -3373,7 +3373,7 @@ index 20d01db1fa..ada9497b37 100644
          currentOutput->Release();
      }
      return ok;
-@@ -5731,12 +5772,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+@@ -5764,12 +5805,18 @@ static const DXGI_FORMAT DEFAULT_SRGB_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
  
  bool QRhiD3D12::ensureDirectCompositionDevice()
  {
@@ -3393,7 +3393,7 @@ index 20d01db1fa..ada9497b37 100644
      if (FAILED(hr)) {
          qWarning("Failed to Direct Composition device: %s", qPrintable(QSystemError::windowsComString(hr)));
          return false;
-@@ -5875,7 +5922,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -5908,7 +5955,7 @@ bool QD3D12SwapChain::createOrResize()
          }
  
          if (SUCCEEDED(hr)) {
@@ -3402,7 +3402,7 @@ index 20d01db1fa..ada9497b37 100644
                  qWarning("IDXGISwapChain3 not available");
                  return false;
              }
-@@ -5909,8 +5956,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -5942,8 +5989,7 @@ bool QD3D12SwapChain::createOrResize()
          for (int i = 0; i < QD3D12_FRAMES_IN_FLIGHT; ++i) {
              hr = rhiD->dev->CreateFence(0,
                                          D3D12_FENCE_FLAG_NONE,
@@ -3412,7 +3412,7 @@ index 20d01db1fa..ada9497b37 100644
              if (FAILED(hr)) {
                  qWarning("Failed to create fence for swapchain: %s",
                           qPrintable(QSystemError::windowsComString(hr)));
-@@ -5939,7 +5985,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -5972,7 +6018,7 @@ bool QD3D12SwapChain::createOrResize()
  
      for (UINT i = 0; i < BUFFER_COUNT; ++i) {
          ID3D12Resource *colorBuffer;
@@ -3421,7 +3421,7 @@ index 20d01db1fa..ada9497b37 100644
          if (FAILED(hr)) {
              qWarning("Failed to get buffer %u for D3D12 swapchain: %s",
                       i, qPrintable(QSystemError::windowsComString(hr)));
-@@ -5993,8 +6039,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -6026,8 +6072,7 @@ bool QD3D12SwapChain::createOrResize()
                                                    D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                    &clearValue,
                                                    &allocation,
@@ -3902,7 +3902,7 @@ index 0d72ba01d0..1ac875666a 100644
                           + qAbs(image.dotsPerMeterY()*2.54/100. - qRound(image.dotsPerMeterY()*2.54/100.));
          qreal diffCm = (qAbs(image.dotsPerMeterX()/100. - qRound(image.dotsPerMeterX()/100.))
 diff --git a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp b/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
-index 5b0a91df3e..ec2207f833 100644
+index eb6b6888af..a0616c63d3 100644
 --- a/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
 +++ b/src/plugins/networkinformation/networklistmanager/qnetworklistmanagerevents.cpp
 @@ -5,6 +5,7 @@
@@ -3913,44 +3913,55 @@ index 5b0a91df3e..ec2207f833 100644
  
  #include <mutex>
  
-@@ -100,20 +101,22 @@ bool QNetworkListManagerEvents::start()
+@@ -100,26 +101,28 @@ bool QNetworkListManagerEvents::start()
      }
  
  #if QT_CONFIG(cpp_winrt)
 -    using namespace winrt::Windows::Networking::Connectivity;
 -    using winrt::Windows::Foundation::IInspectable;
--    // Register for changes in the network and store a token to unregister later:
--    token = NetworkInformation::NetworkStatusChanged(
--            [owner = QPointer(this)](const IInspectable sender) {
--                Q_UNUSED(sender);
--                if (owner) {
--                    std::scoped_lock locker(owner->winrtLock);
--                    if (owner->token)
--                        owner->emitWinRTUpdates();
--                }
--            });
--    // Emit initial state
--    emitWinRTUpdates();
+-    try {
+-        // Register for changes in the network and store a token to unregister later:
+-        token = NetworkInformation::NetworkStatusChanged(
+-                [owner = QPointer(this)](const IInspectable sender) {
+-                    Q_UNUSED(sender);
+-                    if (owner) {
+-                        std::scoped_lock locker(owner->winrtLock);
+-                        if (owner->token)
+-                            owner->emitWinRTUpdates();
+-                    }
+-                });
+-    } catch (const winrt::hresult_error &ex) {
+-        qCWarning(lcNetInfoNLM) << "Failed to register network status changed callback:"
+-                                << QSystemError::windowsComString(ex.code());
+-    }
 +    if (QOperatingSystemVersion::isWin10OrGreater()) {
 +        using namespace winrt::Windows::Networking::Connectivity;
 +        using winrt::Windows::Foundation::IInspectable;
-+        // Register for changes in the network and store a token to unregister later:
-+        token = NetworkInformation::NetworkStatusChanged(
-+                [owner = QPointer(this)](const IInspectable sender) {
-+                    Q_UNUSED(sender);
-+                    if (owner) {
-+                        std::scoped_lock locker(owner->winrtLock);
-+                        if (owner->token)
-+                            owner->emitWinRTUpdates();
-+                    }
-+                });
++        try {
++            // Register for changes in the network and store a token to unregister later:
++            token = NetworkInformation::NetworkStatusChanged(
++                    [owner = QPointer(this)](const IInspectable sender) {
++                        Q_UNUSED(sender);
++                        if (owner) {
++                            std::scoped_lock locker(owner->winrtLock);
++                            if (owner->token)
++                                owner->emitWinRTUpdates();
++                        }
++                    });
++        } catch (const winrt::hresult_error &ex) {
++            qCWarning(lcNetInfoNLM) << "Failed to register network status changed callback:"
++                                    << QSystemError::windowsComString(ex.code());
++        }
+ 
+-    // Emit initial state
+-    emitWinRTUpdates();
 +        // Emit initial state
 +        emitWinRTUpdates();
 +    }
  #endif
  
      return true;
-@@ -132,13 +135,15 @@ void QNetworkListManagerEvents::stop()
+@@ -138,13 +141,15 @@ void QNetworkListManagerEvents::stop()
      // Even if we fail we should still try to unregister from winrt events:
  
  #if QT_CONFIG(cpp_winrt)
@@ -3973,7 +3984,7 @@ index 5b0a91df3e..ec2207f833 100644
      }
  #endif
  }
-@@ -189,6 +194,9 @@ using namespace winrt::Windows::Networking::Connectivity;
+@@ -195,6 +200,9 @@ using namespace winrt::Windows::Networking::Connectivity;
  [[nodiscard]]
  QNetworkInformation::TransportMedium getTransportMedium(const ConnectionProfile &profile)
  {
@@ -3983,7 +3994,7 @@ index 5b0a91df3e..ec2207f833 100644
      if (profile.IsWwanConnectionProfile())
          return QNetworkInformation::TransportMedium::Cellular;
      if (profile.IsWlanConnectionProfile())
-@@ -222,6 +230,8 @@ QNetworkInformation::TransportMedium getTransportMedium(const ConnectionProfile
+@@ -228,6 +236,8 @@ QNetworkInformation::TransportMedium getTransportMedium(const ConnectionProfile
  
  [[nodiscard]] bool getMetered(const ConnectionProfile &profile)
  {
@@ -3992,7 +4003,7 @@ index 5b0a91df3e..ec2207f833 100644
      ConnectionCost cost(nullptr);
      try {
          cost = profile.GetConnectionCost();
-@@ -237,6 +247,8 @@ QNetworkInformation::TransportMedium getTransportMedium(const ConnectionProfile
+@@ -243,6 +253,8 @@ QNetworkInformation::TransportMedium getTransportMedium(const ConnectionProfile
  
  void QNetworkListManagerEvents::emitWinRTUpdates()
  {
@@ -4002,7 +4013,7 @@ index 5b0a91df3e..ec2207f833 100644
      ConnectionProfile profile = nullptr;
      try {
 diff --git a/src/plugins/platforms/CMakeLists.txt b/src/plugins/platforms/CMakeLists.txt
-index bcf29dedd1..4095e3f023 100644
+index 69071a22c2..05cd458261 100644
 --- a/src/plugins/platforms/CMakeLists.txt
 +++ b/src/plugins/platforms/CMakeLists.txt
 @@ -4,12 +4,6 @@
@@ -6003,7 +6014,7 @@ index e461ab6294..e6e6cd433b 100644
      case Python_Code:
          writeString("qt_resource_struct = b\"\\\n");
 diff --git a/src/widgets/CMakeLists.txt b/src/widgets/CMakeLists.txt
-index 39c197eeba..d0f386640a 100644
+index aaa81286ab..6b38174a40 100644
 --- a/src/widgets/CMakeLists.txt
 +++ b/src/widgets/CMakeLists.txt
 @@ -322,7 +322,6 @@ qt_internal_extend_target(Widgets CONDITION MACOS

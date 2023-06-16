@@ -1,4 +1,4 @@
-From 82bb7acf6512438e77baabb2bae1edd7ec41e2a1 Mon Sep 17 00:00:00 2001
+From deed4dc5fc2e5726d75fe538f1a71f1c7c2f1c30 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Sun, 19 Jun 2022 13:06:56 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -13,7 +13,7 @@ Import changes list:
 Signed-off-by: Yuhang Zhao <2546789017@qq.com>
 ---
  ports/ffmpeg/portfile.cmake                      |  2 +-
- scripts/toolchains/windows.cmake                 | 14 +++++++-------
+ scripts/toolchains/windows.cmake                 | 16 ++++++++--------
  triplets/arm-uwp.cmake                           |  1 +
  triplets/arm64-windows.cmake                     |  1 +
  triplets/community/arm-android.cmake             |  2 ++
@@ -65,7 +65,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  triplets/x64-windows-static.cmake                |  2 +-
  triplets/x64-windows.cmake                       |  2 +-
  triplets/x86-windows.cmake                       |  2 +-
- 53 files changed, 72 insertions(+), 33 deletions(-)
+ 53 files changed, 73 insertions(+), 34 deletions(-)
  delete mode 100644 triplets/community/x64-linux-release.cmake
  delete mode 100644 triplets/community/x64-osx-release.cmake
  delete mode 100644 triplets/community/x64-windows-release.cmake
@@ -84,19 +84,23 @@ index 35bac875b..96c9247f6 100644
  if(VCPKG_TARGET_IS_WINDOWS)
      vcpkg_acquire_msys(MSYS_ROOT PACKAGES automake1.16)
 diff --git a/scripts/toolchains/windows.cmake b/scripts/toolchains/windows.cmake
-index 03a142bab..35ba68898 100644
+index 7f4886815..57ebcae92 100644
 --- a/scripts/toolchains/windows.cmake
 +++ b/scripts/toolchains/windows.cmake
-@@ -51,7 +51,7 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
-         set(CHARSET_FLAG)
+@@ -56,25 +56,25 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
+         set(MP_BUILD_FLAG "/MP")
      endif()
  
--    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc /MP ${VCPKG_CXX_FLAGS}" CACHE STRING "")
-+    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc /MP /Zc:__cplusplus ${VCPKG_CXX_FLAGS}" CACHE STRING "")
-     set(CMAKE_C_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /MP ${VCPKG_C_FLAGS}" CACHE STRING "")
+-    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc ${MP_BUILD_FLAG} ${VCPKG_CXX_FLAGS}" CACHE STRING "")
++    set(CMAKE_CXX_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} /GR /EHsc /Zc:__cplusplus ${MP_BUILD_FLAG} ${VCPKG_CXX_FLAGS}" CACHE STRING "")
+     set(CMAKE_C_FLAGS " /nologo /DWIN32 /D_WINDOWS /W3 ${CHARSET_FLAG} ${MP_BUILD_FLAG} ${VCPKG_C_FLAGS}" CACHE STRING "")
  
      if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64ec")
-@@ -62,14 +62,14 @@ if(NOT _CMAKE_IN_TRY_COMPILE)
+         string(APPEND CMAKE_CXX_FLAGS " /arm64EC /D_AMD64_ /DAMD64 /D_ARM64EC_ /DARM64EC")
+         string(APPEND CMAKE_C_FLAGS " /arm64EC /D_AMD64_ /DAMD64 /D_ARM64EC_ /DARM64EC")
+     endif()
+-    set(CMAKE_RC_FLAGS "-c65001 /DWIN32" CACHE STRING "")
++    set(CMAKE_RC_FLAGS "-c65001 -DWIN32 -nologo" CACHE STRING "")
  
      unset(CHARSET_FLAG)
  
@@ -112,8 +116,8 @@ index 03a142bab..35ba68898 100644
      string(APPEND CMAKE_STATIC_LINKER_FLAGS_RELEASE_INIT " /nologo ")
 -    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
 -    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
-+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
-+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
++    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/nologo /DEBUG /INCREMENTAL:NO /OPT:REF /OPT:ICF /OPT:LBR /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_RELEASE}" CACHE STRING "")
  
      string(APPEND CMAKE_STATIC_LINKER_FLAGS_DEBUG_INIT " /nologo ")
      string(APPEND CMAKE_SHARED_LINKER_FLAGS_DEBUG_INIT " /nologo ${VCPKG_LINKER_FLAGS} ${VCPKG_LINKER_FLAGS_DEBUG} ")
@@ -139,10 +143,10 @@ index 8769e975d..1220465c9 100644
  set(VCPKG_LIBRARY_LINKAGE dynamic)
 +set(VCPKG_BUILD_TYPE release)
 diff --git a/triplets/community/arm-android.cmake b/triplets/community/arm-android.cmake
-index feb8f186b..94d938d5d 100644
+index 1376baede..af8e808a9 100644
 --- a/triplets/community/arm-android.cmake
 +++ b/triplets/community/arm-android.cmake
-@@ -1,5 +1,7 @@
+@@ -1,6 +1,8 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -150,6 +154,7 @@ index feb8f186b..94d938d5d 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=armv7a-linux-androideabi")
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=armeabi-v7a -DANDROID_ARM_NEON=OFF)
 diff --git a/triplets/community/arm-ios.cmake b/triplets/community/arm-ios.cmake
 index 7fee3751d..e3b5fe327 100644
 --- a/triplets/community/arm-ios.cmake
@@ -199,10 +204,10 @@ index ca99fac83..5673cf248 100644
  
  set(VCPKG_CMAKE_SYSTEM_NAME MinGW)
 diff --git a/triplets/community/arm-neon-android.cmake b/triplets/community/arm-neon-android.cmake
-index feb8f186b..94d938d5d 100644
+index a26d9aa3e..1cc794011 100644
 --- a/triplets/community/arm-neon-android.cmake
 +++ b/triplets/community/arm-neon-android.cmake
-@@ -1,5 +1,7 @@
+@@ -1,6 +1,8 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -210,6 +215,7 @@ index feb8f186b..94d938d5d 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=armv7a-linux-androideabi")
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=armeabi-v7a -DANDROID_ARM_NEON=ON)
 diff --git a/triplets/community/arm-windows-static.cmake b/triplets/community/arm-windows-static.cmake
 index 9ba5feed7..d38cc524f 100644
 --- a/triplets/community/arm-windows-static.cmake
@@ -231,10 +237,10 @@ index 3aa75933f..ebd6c9443 100644
  
  
 diff --git a/triplets/community/arm64-android.cmake b/triplets/community/arm64-android.cmake
-index 46ad5f166..9a5f75e9b 100644
+index 784f0d39c..4206fc229 100644
 --- a/triplets/community/arm64-android.cmake
 +++ b/triplets/community/arm64-android.cmake
-@@ -1,5 +1,7 @@
+@@ -1,6 +1,8 @@
  set(VCPKG_TARGET_ARCHITECTURE arm64)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -242,6 +248,7 @@ index 46ad5f166..9a5f75e9b 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=aarch64-linux-android")
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=arm64-v8a)
 diff --git a/triplets/community/arm64-ios.cmake b/triplets/community/arm64-ios.cmake
 index c632e9381..e9800ae14 100644
 --- a/triplets/community/arm64-ios.cmake
@@ -344,16 +351,17 @@ index 34c53f0a2..e6eb810f2 100644
 -
 +set(VCPKG_BUILD_TYPE release)
 diff --git a/triplets/community/armv6-android.cmake b/triplets/community/armv6-android.cmake
-index 29ba5655a..fef1422cc 100644
+index 7e6015cc9..367dafeb5 100644
 --- a/triplets/community/armv6-android.cmake
 +++ b/triplets/community/armv6-android.cmake
-@@ -1,4 +1,6 @@
+@@ -1,5 +1,7 @@
  set(VCPKG_TARGET_ARCHITECTURE arm)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=armeabi -DANDROID_ARM_MODE=arm)
 diff --git a/triplets/community/ppc64le-linux.cmake b/triplets/community/ppc64le-linux.cmake
 index 70fa5b44c..a1745a361 100644
 --- a/triplets/community/ppc64le-linux.cmake
@@ -389,10 +397,10 @@ index ece5d8a22..897c5284f 100644
  set(VCPKG_CMAKE_SYSTEM_NAME Emscripten)
  set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${EMSCRIPTEN_ROOT}/cmake/Modules/Platform/Emscripten.cmake")
 diff --git a/triplets/community/x64-android.cmake b/triplets/community/x64-android.cmake
-index 7ef27c2b8..753ff1606 100644
+index 28404f4ed..7201190dd 100644
 --- a/triplets/community/x64-android.cmake
 +++ b/triplets/community/x64-android.cmake
-@@ -1,5 +1,7 @@
+@@ -1,6 +1,8 @@
  set(VCPKG_TARGET_ARCHITECTURE x64)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -400,6 +408,7 @@ index 7ef27c2b8..753ff1606 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=x86_64-linux-android")
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=x86_64)
 diff --git a/triplets/community/x64-freebsd.cmake b/triplets/community/x64-freebsd.cmake
 index 035c5e86a..812f424bf 100644
 --- a/triplets/community/x64-freebsd.cmake
@@ -529,10 +538,10 @@ index d7acd46a4..ac2ed5540 100644
  set(VCPKG_LIBRARY_LINKAGE static)
 +set(VCPKG_BUILD_TYPE release)
 diff --git a/triplets/community/x86-android.cmake b/triplets/community/x86-android.cmake
-index f909598cb..6afc2ba9c 100644
+index ef668467a..a54db12f7 100644
 --- a/triplets/community/x86-android.cmake
 +++ b/triplets/community/x86-android.cmake
-@@ -1,5 +1,7 @@
+@@ -1,6 +1,8 @@
  set(VCPKG_TARGET_ARCHITECTURE x86)
  set(VCPKG_CRT_LINKAGE static)
  set(VCPKG_LIBRARY_LINKAGE static)
@@ -540,6 +549,7 @@ index f909598cb..6afc2ba9c 100644
 +
  set(VCPKG_CMAKE_SYSTEM_NAME Android)
  set(VCPKG_MAKE_BUILD_TRIPLET "--host=i686-linux-android")
+ set(VCPKG_CMAKE_CONFIGURE_OPTIONS -DANDROID_ABI=x86)
 diff --git a/triplets/community/x86-freebsd.cmake b/triplets/community/x86-freebsd.cmake
 index 62042c766..acb2b7185 100644
 --- a/triplets/community/x86-freebsd.cmake
@@ -702,5 +712,5 @@ index 93c43c3ba..0a277bdb7 100644
 -
 +set(VCPKG_BUILD_TYPE release)
 -- 
-2.40.0.windows.1
+2.41.0.windows.1
 

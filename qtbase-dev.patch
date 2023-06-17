@@ -1,4 +1,4 @@
-From 76f04ad77a09ce87ff914f56ee7ca3ec87ec098e Mon Sep 17 00:00:00 2001
+From d82d0658e2d7e1b9b1b5e008fb6a4c776a208707 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -88,14 +88,14 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  .../platforms/windows/qwindowswindow.cpp      | 151 +++--
  .../windowsvista/qwindowsvistastyle.cpp       |  31 +
  .../windowsvista/qwindowsvistastyle_p_p.h     |   1 +
- src/plugins/tls/schannel/qtls_schannel.cpp    |  59 +-
+ src/plugins/tls/schannel/qtls_schannel.cpp    |  58 +-
  src/tools/rcc/main.cpp                        |   7 +-
  src/tools/rcc/rcc.cpp                         |   8 +-
  src/widgets/CMakeLists.txt                    |   1 -
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 76 files changed, 2625 insertions(+), 860 deletions(-)
+ 76 files changed, 2625 insertions(+), 859 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -295,7 +295,7 @@ index 5ac19a9ba3..f5161c1c05 100644
                     cmake/modulecppexports_p.h.in
                     cmake/qbatchedtestrunner.in.cpp
 diff --git a/cmake/QtBuild.cmake b/cmake/QtBuild.cmake
-index c4bf173e8b..e768855f08 100644
+index b45ec1d208..68319d81ee 100644
 --- a/cmake/QtBuild.cmake
 +++ b/cmake/QtBuild.cmake
 @@ -581,3 +581,14 @@ _qt_internal_find_host_info_package("${__qt_build_requires_host_info_package}")
@@ -466,10 +466,10 @@ index 199b844cf8..ce3193a9af 100644
              if(NOT QT_AVOID_CUSTOM_PLATFORM_MODULES)
                  list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_MODULE_PATH)
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index d7a276cc17..42c781a05c 100644
+index faa724e68f..d63e466969 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
-@@ -246,7 +246,7 @@ if(WASM AND QT_FEATURE_sse2)
+@@ -254,7 +254,7 @@ if(WASM AND QT_FEATURE_sse2)
  endif()
  
  # Taken from mkspecs/common/msvc-version.conf and mkspecs/common/msvc-desktop.conf
@@ -478,7 +478,7 @@ index d7a276cc17..42c781a05c 100644
      if (MSVC_VERSION GREATER_EQUAL 1799)
          target_compile_options(PlatformCommonInternal INTERFACE
              -FS
-@@ -257,26 +257,27 @@ if (MSVC)
+@@ -265,26 +265,27 @@ if (MSVC)
      if (MSVC_VERSION GREATER_EQUAL 1899)
          target_compile_options(PlatformCommonInternal INTERFACE
              -Zc:strictStrings
@@ -513,7 +513,7 @@ index d7a276cc17..42c781a05c 100644
  
      target_compile_options(PlatformCommonInternal INTERFACE
          -Zc:wchar_t
-@@ -284,13 +285,62 @@ if (MSVC)
+@@ -292,13 +293,62 @@ if (MSVC)
      )
  
      target_compile_options(PlatformCommonInternal INTERFACE
@@ -521,7 +521,7 @@ index d7a276cc17..42c781a05c 100644
 +        $<$<NOT:$<CONFIG:Debug>>:-fp:fast -GF -GT -Gw -Gy> # TODO: -GA for executables.
      )
  
-     target_link_options(PlatformCommonInternal INTERFACE
+     qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 -        -DYNAMICBASE -NXCOMPAT -LARGEADDRESSAWARE
 -        $<$<NOT:$<CONFIG:Debug>>:-OPT:REF -OPT:ICF -GUARD:CF>
 +        -DYNAMICBASE -FIXED:NO -NXCOMPAT -LARGEADDRESSAWARE
@@ -529,7 +529,7 @@ index d7a276cc17..42c781a05c 100644
      )
 +
 +    if(TEST_architecture_arch STREQUAL "x86_64")
-+        target_link_options(PlatformCommonInternal INTERFACE
++        qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +            -HIGHENTROPYVA
 +        )
 +    endif()
@@ -551,7 +551,7 @@ index d7a276cc17..42c781a05c 100644
 +        /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
 +        $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Zc:inline>
 +    )
-+    target_link_options(PlatformCommonInternal INTERFACE
++    qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +        --color-diagnostics
 +        /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE
 +        $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
@@ -560,7 +560,7 @@ index d7a276cc17..42c781a05c 100644
 +        target_compile_options(PlatformCommonInternal INTERFACE
 +            /clang:-m64
 +        )
-+        target_link_options(PlatformCommonInternal INTERFACE
++        qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +            /HIGHENTROPYVA
 +        )
 +    elseif(TEST_architecture_arch STREQUAL "x86")
@@ -572,14 +572,14 @@ index d7a276cc17..42c781a05c 100644
 +        target_compile_options(PlatformCommonInternal INTERFACE
 +            $<$<NOT:$<CONFIG:Debug>>:-fsplit-lto-unit -fwhole-program-vtables>
 +        )
-+        target_link_options(PlatformCommonInternal INTERFACE
++        qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +            $<$<NOT:$<CONFIG:Debug>>:/OPT:lldltojobs=all /OPT:lldlto=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
 +        )
 +    endif()
  endif()
  
  if(MINGW)
-@@ -301,18 +351,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
+@@ -309,18 +359,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
      target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
  endif()
  
@@ -589,7 +589,7 @@ index d7a276cc17..42c781a05c 100644
 +        target_compile_options(PlatformCommonInternal INTERFACE
 +            $<$<NOT:$<CONFIG:Debug>>:-guard:cf>
 +        )
-         target_link_options(PlatformCommonInternal INTERFACE
+         qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 -            -CETCOMPAT
 +            $<$<NOT:$<CONFIG:Debug>>:-GUARD:CF>
          )
@@ -601,7 +601,7 @@ index d7a276cc17..42c781a05c 100644
 +if(QT_FEATURE_intelcet)
 +    if(MSVC)
 +        if(CLANG OR (MSVC_VERSION GREATER_EQUAL 1920)) # Visual Studio 2019 version 16.0
-+            target_link_options(PlatformCommonInternal INTERFACE
++            qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-CETCOMPAT>
 +            )
 +        endif()
@@ -635,7 +635,7 @@ index d7a276cc17..42c781a05c 100644
 +            target_compile_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
 +            )
-+            target_link_options(PlatformCommonInternal INTERFACE
++            qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +                $<$<NOT:$<CONFIG:Debug>>:-guard:ehcont>
 +            )
 +        endif()
@@ -844,10 +844,10 @@ index 0000000000..92532d72dc
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
 diff --git a/configure.cmake b/configure.cmake
-index d334a9bbdd..a8ad3b541a 100644
+index 361b37a331..b0317f7382 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1049,10 +1049,22 @@ qt_feature("relocatable" PRIVATE
+@@ -1044,10 +1044,22 @@ qt_feature("relocatable" PRIVATE
      AUTODETECT QT_FEATURE_shared
      CONDITION QT_FEATURE_dlopen OR WIN32 OR NOT QT_FEATURE_shared
  )
@@ -870,7 +870,7 @@ index d334a9bbdd..a8ad3b541a 100644
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1093,7 +1105,10 @@ qt_configure_add_summary_entry(
+@@ -1088,7 +1100,10 @@ qt_configure_add_summary_entry(
  qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
@@ -899,7 +899,7 @@ index 41bf2c77d9..836b49c223 100644
      AUTOMOC OFF
      AUTORCC OFF
 diff --git a/qt_cmdline.cmake b/qt_cmdline.cmake
-index be6ead7ce6..a77a5d14c9 100644
+index 34b31ab991..5e4d7d9941 100644
 --- a/qt_cmdline.cmake
 +++ b/qt_cmdline.cmake
 @@ -72,7 +72,10 @@ qt_commandline_option(openssl-linked TYPE void NAME openssl VALUE linked)
@@ -2061,7 +2061,7 @@ index 587975085a..185bfbd587 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index e1f422ce02..b433629826 100644
+index 388291de3e..02d0268ff2 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -8,6 +8,8 @@
@@ -2851,7 +2851,7 @@ index e410375029..fbb662e9d6 100644
      bool deviceLost = false;
      QRhiD3D11NativeHandles nativeHandlesStruct;
 diff --git a/src/gui/rhi/qrhid3d12.cpp b/src/gui/rhi/qrhid3d12.cpp
-index e954d16d1a..ed9253bb8e 100644
+index 7ae3398fdb..435b81cb48 100644
 --- a/src/gui/rhi/qrhid3d12.cpp
 +++ b/src/gui/rhi/qrhid3d12.cpp
 @@ -124,8 +124,54 @@ QT_BEGIN_NAMESPACE
@@ -4465,7 +4465,7 @@ index 6a790bcc1b..b03bcc1bf5 100644
  
  QDirect3D9Handle::~QDirect3D9Handle()
 diff --git a/src/plugins/platforms/windows/qwindowspointerhandler.cpp b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
-index 9592caaabf..0dace290fe 100644
+index 4bd7577cf0..2a837674de 100644
 --- a/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 +++ b/src/plugins/platforms/windows/qwindowspointerhandler.cpp
 @@ -45,10 +45,13 @@ QWindowsPointerHandler::~QWindowsPointerHandler()
@@ -4535,7 +4535,7 @@ index 9592caaabf..0dace290fe 100644
      auto *touchInfo = static_cast<POINTER_TOUCH_INFO *>(vTouchInfo);
  
      if (et & QtWindows::NonClientEventFlag)
-@@ -517,7 +523,7 @@ bool QWindowsPointerHandler::translateTouchEvent(QWindow *window, HWND hwnd,
+@@ -519,7 +525,7 @@ bool QWindowsPointerHandler::translateTouchEvent(QWindow *window, HWND hwnd,
          inputIds.insert(touchPoint.id);
  
          // Avoid getting repeated messages for this frame if there are multiple pointerIds
@@ -4544,7 +4544,7 @@ index 9592caaabf..0dace290fe 100644
      }
  
      // Some devices send touches for each finger in a different message/frame, instead of consolidating
-@@ -557,13 +563,16 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
+@@ -559,13 +565,16 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
                                                 MSG msg, PVOID vPenInfo)
  {
  #if QT_CONFIG(tabletevent)
@@ -5331,20 +5331,19 @@ index e8364678e0..669acbe976 100644
      static bool useVista(bool update = false);
      static QBackingStore *backingStoreForWidget(const QWidget *widget);
 diff --git a/src/plugins/tls/schannel/qtls_schannel.cpp b/src/plugins/tls/schannel/qtls_schannel.cpp
-index ae9ff06eae..5dbc557d50 100644
+index 9d171b5030..a13d499c42 100644
 --- a/src/plugins/tls/schannel/qtls_schannel.cpp
 +++ b/src/plugins/tls/schannel/qtls_schannel.cpp
-@@ -832,7 +832,7 @@ bool TlsCryptographSchannel::acquireCredentialsHandle()
-         certsCount = 1;
-         Q_ASSERT(localCertContext);
-     }
--
+@@ -1143,6 +1143,7 @@ bool TlsCryptographSchannel::acquireCredentialsHandle()
+ 
+     QList<CRYPTO_SETTINGS> cryptoSettings = cryptoSettingsForCiphers(ciphers);
+ 
 +    void *credentials = nullptr;
      TLS_PARAMETERS tlsParameters = {
          0,
          nullptr,
-@@ -841,33 +841,60 @@ bool TlsCryptographSchannel::acquireCredentialsHandle()
-         nullptr,
+@@ -1151,33 +1152,60 @@ bool TlsCryptographSchannel::acquireCredentialsHandle()
+         (cryptoSettings.isEmpty() ? nullptr : cryptoSettings.data()),
          0
      };
 -

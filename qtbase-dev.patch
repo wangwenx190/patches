@@ -1,4 +1,4 @@
-From d82d0658e2d7e1b9b1b5e008fb6a4c776a208707 Mon Sep 17 00:00:00 2001
+From a3e1eb502559b4ac5d6b0b600c1c0fec4f3fc7ea Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -23,15 +23,19 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/Qt3rdPartyLibraryHelpers.cmake          |   6 -
  cmake/QtBaseGlobalTargets.cmake               |   2 +
  cmake/QtBuild.cmake                           |  11 +
+ cmake/QtCompilerFlags.cmake                   |   4 +-
  cmake/QtCompilerOptimization.cmake            |  86 +--
  cmake/QtFeature.cmake                         |   7 +-
+ cmake/QtFlagHandlingHelpers.cmake             |  16 +-
  cmake/QtInternalTargets.cmake                 | 124 +++-
+ cmake/QtModuleHelpers.cmake                   |  21 +-
+ cmake/QtPlatformTargetHelpers.cmake           |   8 +
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
  configure.cmake                               |  15 +
  qmake/CMakeLists.txt                          |   6 -
  qt_cmdline.cmake                              |   3 +
- src/corelib/CMakeLists.txt                    |  12 +-
+ src/corelib/CMakeLists.txt                    |   8 +-
  src/corelib/global/qlibraryinfo.cpp           |  20 +-
  src/corelib/global/qlibraryinfo.h             |   5 +
  .../global/qoperatingsystemversion.cpp        |  10 +
@@ -95,7 +99,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 76 files changed, 2625 insertions(+), 859 deletions(-)
+ 80 files changed, 2650 insertions(+), 879 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -313,6 +317,30 @@ index b45ec1d208..68319d81ee 100644
 +        include(YY-Thunks)
 +    endif()
 +endif()
+diff --git a/cmake/QtCompilerFlags.cmake b/cmake/QtCompilerFlags.cmake
+index 62bd63bd22..8168b70338 100644
+--- a/cmake/QtCompilerFlags.cmake
++++ b/cmake/QtCompilerFlags.cmake
+@@ -8,18 +8,16 @@
+ # property checked below, and is equivalent to qmake's CONFIG += warn_off.
+ 
+ set(_qt_compiler_warning_flags_on "")
+-set(_qt_compiler_warning_flags_off "")
++set(_qt_compiler_warning_flags_off -w)
+ 
+ if (MSVC)
+     list(APPEND _qt_compiler_warning_flags_on /W3)
+-    list(APPEND _qt_compiler_warning_flags_off -W0)
+ else()
+     if(CMAKE_CXX_COMPILER_ID STREQUAL "GHS") # There is no -Wextra flag for GHS compiler.
+         list(APPEND _qt_compiler_warning_flags_on -Wall)
+     else()
+         list(APPEND _qt_compiler_warning_flags_on -Wall -Wextra)
+     endif()
+-    list(APPEND _qt_compiler_warning_flags_off -w)
+ endif()
+ 
+ set(_qt_compiler_warning_flags_condition
 diff --git a/cmake/QtCompilerOptimization.cmake b/cmake/QtCompilerOptimization.cmake
 index e1d363afab..73ae832b8d 100644
 --- a/cmake/QtCompilerOptimization.cmake
@@ -465,8 +493,44 @@ index 199b844cf8..ce3193a9af 100644
              # Let CMake load our custom platform modules.
              if(NOT QT_AVOID_CUSTOM_PLATFORM_MODULES)
                  list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_MODULE_PATH)
+diff --git a/cmake/QtFlagHandlingHelpers.cmake b/cmake/QtFlagHandlingHelpers.cmake
+index a80dfdd020..9e16e058f4 100644
+--- a/cmake/QtFlagHandlingHelpers.cmake
++++ b/cmake/QtFlagHandlingHelpers.cmake
+@@ -205,25 +205,21 @@ endfunction()
+ function(qt_internal_set_exceptions_flags target exceptions_on)
+     set(_defs "")
+     set(_flag "")
+-    if(exceptions_on)
++    if(TRUE) # Hack for clang-cl.
+         if(MSVC)
+             set(_flag "/EHsc")
+             if((MSVC_VERSION GREATER_EQUAL 1929) AND NOT CLANG)
+                 set(_flag ${_flag} "/d2FH4")
+             endif()
++        else()
++            set(_flag "-fexceptions")
+         endif()
+     else()
+         set(_defs "QT_NO_EXCEPTIONS")
+-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+-            set(_flag "/EHs-c-" "/wd4530" "/wd4577")
+-        elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|AppleClang|InteLLLVM")
++        if(MSVC)
++            set(_flag "/EHs-c-")
++        else()
+             set(_flag "-fno-exceptions")
+-        elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-            if (MSVC)
+-                set(_flag "/EHs-c-" "/wd4530" "/wd4577")
+-            else()
+-                set(_flag "-fno-exceptions")
+-            endif()
+         endif()
+     endif()
+ 
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index faa724e68f..d63e466969 100644
+index faa724e68f..35dfcf7c6f 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
 @@ -254,7 +254,7 @@ if(WASM AND QT_FEATURE_sse2)
@@ -549,7 +613,7 @@ index faa724e68f..d63e466969 100644
 +        /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
 +        /D__WRL_ENABLE_FUNCTION_STATICS__ # Required to make the 19041 SDK compatible with clang-cl.
 +        /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
-+        $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Zc:inline>
++        $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /clang:-ffp-contract=fast /Gw /Gy /Zc:inline>
 +    )
 +    qt_internal_platform_link_options(PlatformCommonInternal INTERFACE
 +        --color-diagnostics
@@ -647,6 +711,127 @@ index faa724e68f..d63e466969 100644
  if(QT_FEATURE_force_asserts)
      target_compile_definitions(PlatformCommonInternal INTERFACE QT_FORCE_ASSERTS)
  endif()
+diff --git a/cmake/QtModuleHelpers.cmake b/cmake/QtModuleHelpers.cmake
+index 2cf6d82422..ee000842f9 100644
+--- a/cmake/QtModuleHelpers.cmake
++++ b/cmake/QtModuleHelpers.cmake
+@@ -214,7 +214,7 @@ function(qt_internal_add_module target)
+         list(APPEND export_properties
+             "_qt_is_public_module"
+         )
+-        if(NOT ${arg_NO_PRIVATE_MODULE})
++        if(NOT arg_NO_PRIVATE_MODULE)
+             set_target_properties(${target} PROPERTIES
+                 _qt_private_module_target_name "${target}Private"
+             )
+@@ -266,7 +266,7 @@ function(qt_internal_add_module target)
+     set_property(TARGET "${target}" APPEND PROPERTY EXPORT_PROPERTIES _qt_config_module_name)
+ 
+     set(is_framework 0)
+-    if(QT_FEATURE_framework AND NOT ${arg_HEADER_MODULE} AND NOT ${arg_STATIC})
++    if(QT_FEATURE_framework AND NOT arg_HEADER_MODULE AND NOT arg_STATIC)
+         set(is_framework 1)
+         set_target_properties(${target} PROPERTIES
+             FRAMEWORK TRUE
+@@ -311,7 +311,7 @@ function(qt_internal_add_module target)
+ 
+     # Add _private target to link against the private headers:
+     set(target_private "${target}Private")
+-    if(NOT ${arg_NO_PRIVATE_MODULE})
++    if(NOT arg_NO_PRIVATE_MODULE)
+         add_library("${target_private}" INTERFACE)
+         qt_internal_add_target_aliases("${target_private}")
+         set_target_properties(${target_private} PROPERTIES
+@@ -400,7 +400,7 @@ function(qt_internal_add_module target)
+ 
+     # Module headers:
+     set_property(TARGET "${target}" APPEND PROPERTY EXPORT_PROPERTIES _qt_module_has_headers)
+-    if(${arg_NO_MODULE_HEADERS} OR ${arg_NO_SYNC_QT})
++    if(arg_NO_MODULE_HEADERS OR arg_NO_SYNC_QT)
+         set_target_properties("${target}" PROPERTIES
+             _qt_module_has_headers OFF)
+     else()
+@@ -439,7 +439,7 @@ function(qt_internal_add_module target)
+         set_source_files_properties("${module_depends_header}" PROPERTIES GENERATED TRUE)
+         set_target_properties(${target} PROPERTIES _qt_module_depends_header
+             "${module_depends_header}")
+-        if(NOT ${arg_HEADER_MODULE})
++        if(NOT arg_HEADER_MODULE)
+             set(module_header "${module_build_interface_include_dir}/${module_include_name}")
+             set_property(TARGET "${target}" PROPERTY MODULE_HEADER
+                     "${module_header}")
+@@ -489,8 +489,6 @@ function(qt_internal_add_module target)
+         endif()
+     endif()
+ 
+-    qt_internal_library_deprecation_level(deprecation_define)
+-
+     if(NOT arg_HEADER_MODULE)
+         qt_autogen_tools_initial_setup(${target})
+     endif()
+@@ -580,7 +578,6 @@ function(qt_internal_add_module target)
+             QT_DEPRECATED_WARNINGS
+             QT_BUILDING_QT
+             QT_BUILD_${module_define_infix}_LIB ### FIXME: use QT_BUILD_ADDON for Add-ons or remove if we don't have add-ons anymore
+-            ${deprecation_define}
+             )
+         list(APPEND arg_LIBRARIES Qt::PlatformModuleInternal)
+     endif()
+@@ -639,7 +636,7 @@ function(qt_internal_add_module target)
+     # thus we can't use qt_internal_extend_target()'s PUBLIC_DEFINES option.
+     target_compile_definitions(${target} INTERFACE QT_${module_define_infix}_LIB)
+ 
+-    if(NOT arg_EXCEPTIONS AND NOT ${arg_HEADER_MODULE})
++    if(NOT arg_EXCEPTIONS AND NOT arg_HEADER_MODULE)
+         qt_internal_set_exceptions_flags("${target}" FALSE)
+     elseif(arg_EXCEPTIONS)
+         qt_internal_set_exceptions_flags("${target}" TRUE)
+@@ -730,7 +727,7 @@ set(QT_ALLOW_MISSING_TOOLS_PACKAGES TRUE)")
+     endif()
+ 
+     # Generate metatypes
+-    if (NOT ${arg_NO_GENERATE_METATYPES} AND NOT target_type STREQUAL "INTERFACE_LIBRARY")
++    if (NOT arg_NO_GENERATE_METATYPES AND NOT target_type STREQUAL "INTERFACE_LIBRARY")
+         set(args "")
+         if(QT_WILL_INSTALL)
+             set(metatypes_install_dir "${INSTALL_ARCHDATADIR}/metatypes")
+@@ -775,7 +772,7 @@ set(QT_ALLOW_MISSING_TOOLS_PACKAGES TRUE)")
+ 
+     file(COPY ${extra_cmake_files} DESTINATION "${config_build_dir}")
+     set(exported_targets ${target})
+-    if(NOT ${arg_NO_PRIVATE_MODULE})
++    if(NOT arg_NO_PRIVATE_MODULE)
+         list(APPEND exported_targets ${target_private})
+     endif()
+     set(export_name "${INSTALL_CMAKE_NAMESPACE}${target}Targets")
+@@ -865,7 +862,7 @@ set(QT_ALLOW_MISSING_TOOLS_PACKAGES TRUE)")
+ 
+     if(arg_INTERNAL_MODULE)
+         target_include_directories("${target}" INTERFACE ${interface_includes})
+-    elseif(NOT ${arg_NO_PRIVATE_MODULE})
++    elseif(NOT arg_NO_PRIVATE_MODULE)
+         target_include_directories("${target_private}" INTERFACE ${interface_includes})
+         target_link_libraries("${target_private}" INTERFACE "${target}")
+     endif()
+diff --git a/cmake/QtPlatformTargetHelpers.cmake b/cmake/QtPlatformTargetHelpers.cmake
+index 54d1916f9e..1cd63923b5 100644
+--- a/cmake/QtPlatformTargetHelpers.cmake
++++ b/cmake/QtPlatformTargetHelpers.cmake
+@@ -63,6 +63,14 @@ function(qt_internal_setup_public_platform_target)
+ 
+     # Generate a pkgconfig for Qt::Platform.
+     qt_internal_generate_pkg_config_file(Platform)
++
++    # Make sure Qt users use the same symbols as how we build Qt.
++    qt_internal_library_deprecation_level(deprecation_defines)
++    target_compile_definitions(Platform INTERFACE ${deprecation_defines})
++
++    if(MSVC AND CLANG)
++        target_compile_options(Platform INTERFACE "/EHsc" "/GR")
++    endif()
+ endfunction()
+ 
+ function(qt_internal_get_platform_definition_include_dir install_interface build_interface)
 diff --git a/cmake/VC-LTL.cmake b/cmake/VC-LTL.cmake
 new file mode 100644
 index 0000000000..2bab2f21d6
@@ -914,7 +1099,7 @@ index 34b31ab991..5e4d7d9941 100644
                        benchmarks manual-tests minimal-static-tests)
  qt_commandline_option(mips_dsp TYPE boolean)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index 9bc5a4380a..0f8eae35f0 100644
+index 9bc5a4380a..cf6c2f63c1 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
 @@ -504,9 +504,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
@@ -928,20 +1113,16 @@ index 9bc5a4380a..0f8eae35f0 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -791,12 +790,6 @@ qt_internal_extend_target(Core CONDITION WIN32
-         text/qlocale_win.cpp
+@@ -792,7 +791,7 @@ qt_internal_extend_target(Core CONDITION WIN32
  )
  
--# On MS-Win, clang has two flavors, one of which immitates MSVC (so claims to be it)
+ # On MS-Win, clang has two flavors, one of which immitates MSVC (so claims to be it)
 -qt_internal_extend_target(Core CONDITION WIN32 AND MSVC AND NOT CLANG
--    LIBRARIES
--        runtimeobject
--)
--
- qt_internal_extend_target(Core CONDITION QT_FEATURE_icu
-     SOURCES
-         text/qcollator_icu.cpp
-@@ -999,7 +992,7 @@ qt_internal_extend_target(Core CONDITION ANDROID
++qt_internal_extend_target(Core CONDITION MSVC
+     LIBRARIES
+         runtimeobject
+ )
+@@ -999,7 +998,7 @@ qt_internal_extend_target(Core CONDITION ANDROID
          # place to put them.
  )
  
@@ -950,7 +1131,7 @@ index 9bc5a4380a..0f8eae35f0 100644
      SOURCES
          platform/windows/qfactorycacheregistration_p.h
          platform/windows/qfactorycacheregistration.cpp
-@@ -1323,6 +1316,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1323,6 +1322,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp

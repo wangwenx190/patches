@@ -1,4 +1,4 @@
-From a3e1eb502559b4ac5d6b0b600c1c0fec4f3fc7ea Mon Sep 17 00:00:00 2001
+From 8b9076e8b553e8fc69ac17b37e95a5fa317f49f7 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,10 +26,10 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtCompilerFlags.cmake                   |   4 +-
  cmake/QtCompilerOptimization.cmake            |  86 +--
  cmake/QtFeature.cmake                         |   7 +-
- cmake/QtFlagHandlingHelpers.cmake             |  16 +-
- cmake/QtInternalTargets.cmake                 | 124 +++-
+ cmake/QtFlagHandlingHelpers.cmake             |  17 +-
+ cmake/QtInternalTargets.cmake                 | 128 ++++-
  cmake/QtModuleHelpers.cmake                   |  21 +-
- cmake/QtPlatformTargetHelpers.cmake           |   8 +
+ cmake/QtPlatformTargetHelpers.cmake           |  10 +
  cmake/VC-LTL.cmake                            |  94 +++
  cmake/YY-Thunks.cmake                         |  90 +++
  configure.cmake                               |  15 +
@@ -99,7 +99,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 80 files changed, 2650 insertions(+), 879 deletions(-)
+ 80 files changed, 2657 insertions(+), 879 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -494,15 +494,16 @@ index 199b844cf8..ce3193a9af 100644
              if(NOT QT_AVOID_CUSTOM_PLATFORM_MODULES)
                  list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_MODULE_PATH)
 diff --git a/cmake/QtFlagHandlingHelpers.cmake b/cmake/QtFlagHandlingHelpers.cmake
-index a80dfdd020..9e16e058f4 100644
+index a80dfdd020..09e351acf7 100644
 --- a/cmake/QtFlagHandlingHelpers.cmake
 +++ b/cmake/QtFlagHandlingHelpers.cmake
-@@ -205,25 +205,21 @@ endfunction()
+@@ -205,25 +205,22 @@ endfunction()
  function(qt_internal_set_exceptions_flags target exceptions_on)
      set(_defs "")
      set(_flag "")
 -    if(exceptions_on)
-+    if(TRUE) # Hack for clang-cl.
++    # Hack for clang-cl: enable exception handling unconditionally.
++    if(TRUE)
          if(MSVC)
              set(_flag "/EHsc")
              if((MSVC_VERSION GREATER_EQUAL 1929) AND NOT CLANG)
@@ -530,7 +531,7 @@ index a80dfdd020..9e16e058f4 100644
      endif()
  
 diff --git a/cmake/QtInternalTargets.cmake b/cmake/QtInternalTargets.cmake
-index faa724e68f..35dfcf7c6f 100644
+index faa724e68f..46291a6e08 100644
 --- a/cmake/QtInternalTargets.cmake
 +++ b/cmake/QtInternalTargets.cmake
 @@ -254,7 +254,7 @@ if(WASM AND QT_FEATURE_sse2)
@@ -643,11 +644,15 @@ index faa724e68f..35dfcf7c6f 100644
  endif()
  
  if(MINGW)
-@@ -309,18 +359,64 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
+@@ -309,18 +359,68 @@ if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
      target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
  endif()
  
 -if(QT_FEATURE_intelcet)
++# Make sure Qt users use the same symbols as how we build Qt.
++qt_internal_library_deprecation_level(deprecation_defines)
++target_compile_definitions(PlatformCommonInternal INTERFACE ${deprecation_defines})
++
 +if(QT_FEATURE_cfguard)
      if(MSVC)
 +        target_compile_options(PlatformCommonInternal INTERFACE
@@ -814,19 +819,21 @@ index 2cf6d82422..ee000842f9 100644
          target_link_libraries("${target_private}" INTERFACE "${target}")
      endif()
 diff --git a/cmake/QtPlatformTargetHelpers.cmake b/cmake/QtPlatformTargetHelpers.cmake
-index 54d1916f9e..1cd63923b5 100644
+index 54d1916f9e..94c34f2a1e 100644
 --- a/cmake/QtPlatformTargetHelpers.cmake
 +++ b/cmake/QtPlatformTargetHelpers.cmake
-@@ -63,6 +63,14 @@ function(qt_internal_setup_public_platform_target)
+@@ -63,6 +63,16 @@ function(qt_internal_setup_public_platform_target)
  
      # Generate a pkgconfig for Qt::Platform.
      qt_internal_generate_pkg_config_file(Platform)
 +
-+    # Make sure Qt users use the same symbols as how we build Qt.
-+    qt_internal_library_deprecation_level(deprecation_defines)
-+    target_compile_definitions(Platform INTERFACE ${deprecation_defines})
-+
 +    if(MSVC AND CLANG)
++        # Hack for clang-cl: for some unknown reason, the "/EHsc" or "/EHs-c-" flag will always be
++        # missing for some of our CMake targets and that results in compilation failure for static
++        # builds. I tried to disabled exception handling unconditionally for all our targets but it
++        # seems that some code inside Qt really need exception handling and it won't compile at all
++        # if we disable it forcely. So to make everyone happy, I choose to enable exception handling
++        # unconditionally in the end.
 +        target_compile_options(Platform INTERFACE "/EHsc" "/GR")
 +    endif()
  endfunction()
@@ -1029,10 +1036,10 @@ index 0000000000..92532d72dc
 +    message(WARNING "Can't locate the YY-Thunks installation directory!")
 +endif()
 diff --git a/configure.cmake b/configure.cmake
-index 361b37a331..b0317f7382 100644
+index e8eb79c685..22047f751a 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -1044,10 +1044,22 @@ qt_feature("relocatable" PRIVATE
+@@ -1046,10 +1046,22 @@ qt_feature("relocatable" PRIVATE
      AUTODETECT QT_FEATURE_shared
      CONDITION QT_FEATURE_dlopen OR WIN32 OR NOT QT_FEATURE_shared
  )
@@ -1055,7 +1062,7 @@ index 361b37a331..b0317f7382 100644
  qt_configure_add_summary_build_type_and_config()
  qt_configure_add_summary_section(NAME "Build options")
  qt_configure_add_summary_build_mode(Mode)
-@@ -1088,7 +1100,10 @@ qt_configure_add_summary_entry(
+@@ -1090,7 +1102,10 @@ qt_configure_add_summary_entry(
  qt_configure_add_summary_entry(ARGS "relocatable")
  qt_configure_add_summary_entry(ARGS "precompile_header")
  qt_configure_add_summary_entry(ARGS "ltcg")
@@ -1099,7 +1106,7 @@ index 34b31ab991..5e4d7d9941 100644
                        benchmarks manual-tests minimal-static-tests)
  qt_commandline_option(mips_dsp TYPE boolean)
 diff --git a/src/corelib/CMakeLists.txt b/src/corelib/CMakeLists.txt
-index 9bc5a4380a..cf6c2f63c1 100644
+index 03877853b9..df3153bad9 100644
 --- a/src/corelib/CMakeLists.txt
 +++ b/src/corelib/CMakeLists.txt
 @@ -504,9 +504,8 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_animation
@@ -1113,7 +1120,7 @@ index 9bc5a4380a..cf6c2f63c1 100644
  )
  
  qt_internal_extend_target(Core CONDITION WIN32
-@@ -792,7 +791,7 @@ qt_internal_extend_target(Core CONDITION WIN32
+@@ -793,7 +792,7 @@ qt_internal_extend_target(Core CONDITION WIN32
  )
  
  # On MS-Win, clang has two flavors, one of which immitates MSVC (so claims to be it)
@@ -1122,7 +1129,7 @@ index 9bc5a4380a..cf6c2f63c1 100644
      LIBRARIES
          runtimeobject
  )
-@@ -999,7 +998,7 @@ qt_internal_extend_target(Core CONDITION ANDROID
+@@ -1000,7 +999,7 @@ qt_internal_extend_target(Core CONDITION ANDROID
          # place to put them.
  )
  
@@ -1131,7 +1138,7 @@ index 9bc5a4380a..cf6c2f63c1 100644
      SOURCES
          platform/windows/qfactorycacheregistration_p.h
          platform/windows/qfactorycacheregistration.cpp
-@@ -1323,6 +1322,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
+@@ -1324,6 +1323,7 @@ qt_internal_extend_target(Core CONDITION QT_FEATURE_ctf AND QT_FEATURE_library
  set_source_files_properties(
      thread/qmutex_mac.cpp
      thread/qmutex_unix.cpp
@@ -1872,7 +1879,7 @@ index 43324fbfb6..0162e74ab2 100644
      // mingw and clang still have to use Win32 API
      unsigned long cnt = 0;
 diff --git a/src/corelib/thread/qfutex_p.h b/src/corelib/thread/qfutex_p.h
-index d7b91f6d2d..140092078e 100644
+index 8ba798f920..3bbdbffce2 100644
 --- a/src/corelib/thread/qfutex_p.h
 +++ b/src/corelib/thread/qfutex_p.h
 @@ -20,6 +20,8 @@
@@ -2105,7 +2112,7 @@ index 14833d56ef..7b1becb3db 100644
  // We mean it.
  //
 diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
-index 1b182d971d..0751ad10e2 100644
+index 37cefa9a25..71b9670e7c 100644
 --- a/src/gui/CMakeLists.txt
 +++ b/src/gui/CMakeLists.txt
 @@ -421,12 +421,6 @@ qt_internal_extend_target(Gui CONDITION WIN32

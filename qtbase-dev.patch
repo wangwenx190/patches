@@ -1,4 +1,4 @@
-From 8b9076e8b553e8fc69ac17b37e95a5fa317f49f7 Mon Sep 17 00:00:00 2001
+From ec2891ad18ee5a6359cdbd51be5336dbb17f5aa9 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -22,7 +22,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  build-test.bat                                | 157 +++++
  cmake/Qt3rdPartyLibraryHelpers.cmake          |   6 -
  cmake/QtBaseGlobalTargets.cmake               |   2 +
- cmake/QtBuild.cmake                           |  11 +
+ cmake/QtBuild.cmake                           |  14 +
  cmake/QtCompilerFlags.cmake                   |   4 +-
  cmake/QtCompilerOptimization.cmake            |  86 +--
  cmake/QtFeature.cmake                         |   7 +-
@@ -99,7 +99,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 80 files changed, 2657 insertions(+), 879 deletions(-)
+ 80 files changed, 2660 insertions(+), 879 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -299,10 +299,10 @@ index 5ac19a9ba3..f5161c1c05 100644
                     cmake/modulecppexports_p.h.in
                     cmake/qbatchedtestrunner.in.cpp
 diff --git a/cmake/QtBuild.cmake b/cmake/QtBuild.cmake
-index b45ec1d208..68319d81ee 100644
+index b45ec1d208..84baa61e8d 100644
 --- a/cmake/QtBuild.cmake
 +++ b/cmake/QtBuild.cmake
-@@ -581,3 +581,14 @@ _qt_internal_find_host_info_package("${__qt_build_requires_host_info_package}")
+@@ -581,3 +581,17 @@ _qt_internal_find_host_info_package("${__qt_build_requires_host_info_package}")
  if(CMAKE_VERSION VERSION_LESS "3.19.0")
      variable_watch(CMAKE_CURRENT_LIST_DIR qt_watch_current_list_dir)
  endif()
@@ -310,6 +310,9 @@ index b45ec1d208..68319d81ee 100644
 +if(MSVC)
 +    include(VC-LTL)
 +    if("x${SupportLTL}" STREQUAL "xtrue")
++        unset(CMAKE_MSVC_RUNTIME_LIBRARY)
++        unset(CMAKE_MSVC_RUNTIME_LIBRARY CACHE)
++        #unset(CMAKE_MSVC_RUNTIME_LIBRARY PARENT_SCOPE)
 +        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 +    endif()
 +    if(NOT CLANG) # LLD-LINK can't handle duplicated symbols.

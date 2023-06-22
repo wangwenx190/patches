@@ -1,4 +1,4 @@
-From ec2891ad18ee5a6359cdbd51be5336dbb17f5aa9 Mon Sep 17 00:00:00 2001
+From 414195f2afcd23c9c8310527881cb6495783b718 Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -26,7 +26,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  cmake/QtCompilerFlags.cmake                   |   4 +-
  cmake/QtCompilerOptimization.cmake            |  86 +--
  cmake/QtFeature.cmake                         |   7 +-
- cmake/QtFlagHandlingHelpers.cmake             |  17 +-
+ cmake/QtFlagHandlingHelpers.cmake             |  18 +-
  cmake/QtInternalTargets.cmake                 | 128 ++++-
  cmake/QtModuleHelpers.cmake                   |  21 +-
  cmake/QtPlatformTargetHelpers.cmake           |  10 +
@@ -51,7 +51,6 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/kernel/qfunctions_win.cpp         |  10 +-
  src/corelib/plugin/qsystemlibrary.cpp         |  46 +-
  src/corelib/text/qlocale_win.cpp              |  23 +-
- src/corelib/thread/qfutex_p.h                 |   2 +
  src/corelib/thread/qfutex_win_p.h             |  56 +-
  src/corelib/thread/qlocking_p.h               |   7 +-
  src/corelib/thread/qmutex.cpp                 |   2 +
@@ -63,7 +62,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/gui/image/qimagereader.cpp                |   1 +
  src/gui/kernel/qhighdpiscaling.cpp            |   4 +-
  src/gui/opengl/qopengl.cpp                    |  32 +-
- src/gui/rhi/qrhid3d11.cpp                     | 538 +++++++++++-------
+ src/gui/rhi/qrhid3d11.cpp                     | 540 +++++++++++-------
  src/gui/rhi/qrhid3d11_p.h                     |   3 +-
  src/gui/rhi/qrhid3d12.cpp                     | 143 +++--
  .../qwindowsdirectwritefontdatabase.cpp       |   6 +-
@@ -99,7 +98,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 80 files changed, 2660 insertions(+), 879 deletions(-)
+ 79 files changed, 2660 insertions(+), 880 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -497,16 +496,18 @@ index 199b844cf8..ce3193a9af 100644
              if(NOT QT_AVOID_CUSTOM_PLATFORM_MODULES)
                  list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_MODULE_PATH)
 diff --git a/cmake/QtFlagHandlingHelpers.cmake b/cmake/QtFlagHandlingHelpers.cmake
-index a80dfdd020..09e351acf7 100644
+index a80dfdd020..171068846c 100644
 --- a/cmake/QtFlagHandlingHelpers.cmake
 +++ b/cmake/QtFlagHandlingHelpers.cmake
-@@ -205,25 +205,22 @@ endfunction()
+@@ -205,25 +205,25 @@ endfunction()
  function(qt_internal_set_exceptions_flags target exceptions_on)
      set(_defs "")
      set(_flag "")
--    if(exceptions_on)
 +    # Hack for clang-cl: enable exception handling unconditionally.
-+    if(TRUE)
++    if(MSVC AND CLANG)
++        set(exceptions_on TRUE)
++    endif()
+     if(exceptions_on)
          if(MSVC)
              set(_flag "/EHsc")
              if((MSVC_VERSION GREATER_EQUAL 1929) AND NOT CLANG)
@@ -1881,19 +1882,6 @@ index 43324fbfb6..0162e74ab2 100644
  #endif // QT_CONFIG(cpp_winrt)
      // mingw and clang still have to use Win32 API
      unsigned long cnt = 0;
-diff --git a/src/corelib/thread/qfutex_p.h b/src/corelib/thread/qfutex_p.h
-index 8ba798f920..3bbdbffce2 100644
---- a/src/corelib/thread/qfutex_p.h
-+++ b/src/corelib/thread/qfutex_p.h
-@@ -20,6 +20,8 @@
- 
- QT_BEGIN_NAMESPACE
- 
-+using namespace Qt::StringLiterals;
-+
- namespace QtDummyFutex {
-     constexpr inline bool futexAvailable() { return false; }
-     template <typename Atomic>
 diff --git a/src/corelib/thread/qfutex_win_p.h b/src/corelib/thread/qfutex_win_p.h
 index 75a12bd82c..58f7865bd6 100644
 --- a/src/corelib/thread/qfutex_win_p.h
@@ -2115,7 +2103,7 @@ index 14833d56ef..7b1becb3db 100644
  // We mean it.
  //
 diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
-index 37cefa9a25..71b9670e7c 100644
+index 0a97623fce..bdb7d1ce18 100644
 --- a/src/gui/CMakeLists.txt
 +++ b/src/gui/CMakeLists.txt
 @@ -421,12 +421,6 @@ qt_internal_extend_target(Gui CONDITION WIN32
@@ -2252,7 +2240,7 @@ index 587975085a..185bfbd587 100644
  
      bool isNull() const { return type.isEmpty(); }
 diff --git a/src/gui/rhi/qrhid3d11.cpp b/src/gui/rhi/qrhid3d11.cpp
-index 388291de3e..02d0268ff2 100644
+index feda195c51..02d0268ff2 100644
 --- a/src/gui/rhi/qrhid3d11.cpp
 +++ b/src/gui/rhi/qrhid3d11.cpp
 @@ -8,6 +8,8 @@
@@ -2779,7 +2767,7 @@ index 388291de3e..02d0268ff2 100644
          swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
  
      if (!swapChain) {
-@@ -5054,121 +5170,145 @@ bool QD3D11SwapChain::createOrResize()
+@@ -5054,123 +5170,145 @@ bool QD3D11SwapChain::createOrResize()
          colorFormat = DEFAULT_FORMAT;
          srgbAdjustedColorFormat = m_flags.testFlag(sRGB) ? DEFAULT_SRGB_FORMAT : DEFAULT_FORMAT;
  
@@ -2870,9 +2858,7 @@ index 388291de3e..02d0268ff2 100644
 +            // This makes no difference for the rest of the stuff except that
 +            // automatic MSAA is unsupported and needs to be implemented via a
 +            // custom multisample render target and an explicit resolve.
- 
--        IDXGIFactory2 *fac = static_cast<IDXGIFactory2 *>(rhiD->dxgiFactory);
--        IDXGISwapChain1 *sc1;
++
 +            DXGI_SWAP_CHAIN_DESC1 desc = {};
 +            desc.Width = UINT(pixelSize.width());
 +            desc.Height = UINT(pixelSize.height());
@@ -2883,7 +2869,9 @@ index 388291de3e..02d0268ff2 100644
 +            desc.Flags = swapChainFlags;
 +            desc.Scaling = DXGI_SCALING_NONE;
 +            desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-+
+ 
+-        IDXGIFactory2 *fac = static_cast<IDXGIFactory2 *>(rhiD->dxgiFactory);
+-        IDXGISwapChain1 *sc1;
 +            if (dcompVisual) {
 +                // With DirectComposition setting AlphaMode to STRAIGHT fails the
 +                // swapchain creation, whereas the result seems to be identical
@@ -2978,6 +2966,9 @@ index 388291de3e..02d0268ff2 100644
 -                    qWarning("Failed to set content for Direct Composition visual: %s",
 -                             qPrintable(QSystemError::windowsComString(hr)));
                  }
+-            } else {
+-                // disable Alt+Enter; not relevant when using DirectComposition
+-                rhiD->dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
              }
 +        } else {
 +            // Fallback: use DISCARD model. Regardless, keep on using our manual
@@ -3005,7 +2996,6 @@ index 388291de3e..02d0268ff2 100644
                  qPrintable(QSystemError::windowsComString(hr)));
              return false;
          }
--        rhiD->dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
 +        rhiD->dxgiFactory->MakeWindowAssociation(hwnd,
 +            DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
      } else {
@@ -3017,7 +3007,7 @@ index 388291de3e..02d0268ff2 100644
                                        colorFormat, swapChainFlags);
          if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
              qWarning("Device loss detected in ResizeBuffers()");
-@@ -5195,7 +5335,7 @@ bool QD3D11SwapChain::createOrResize()
+@@ -5197,7 +5335,7 @@ bool QD3D11SwapChain::createOrResize()
      // swapchain."
  
      // So just query index 0 once (per resize) and be done with it.
@@ -3027,7 +3017,7 @@ index 388291de3e..02d0268ff2 100644
          qWarning("Failed to query swapchain backbuffer: %s",
              qPrintable(QSystemError::windowsComString(hr)));
 diff --git a/src/gui/rhi/qrhid3d11_p.h b/src/gui/rhi/qrhid3d11_p.h
-index e410375029..fbb662e9d6 100644
+index 0120df3690..ee6efdb6cc 100644
 --- a/src/gui/rhi/qrhid3d11_p.h
 +++ b/src/gui/rhi/qrhid3d11_p.h
 @@ -754,8 +754,9 @@ public:
@@ -3042,7 +3032,7 @@ index e410375029..fbb662e9d6 100644
      bool deviceLost = false;
      QRhiD3D11NativeHandles nativeHandlesStruct;
 diff --git a/src/gui/rhi/qrhid3d12.cpp b/src/gui/rhi/qrhid3d12.cpp
-index 7ae3398fdb..435b81cb48 100644
+index 7c55ff9f5c..815a4399fa 100644
 --- a/src/gui/rhi/qrhid3d12.cpp
 +++ b/src/gui/rhi/qrhid3d12.cpp
 @@ -124,8 +124,54 @@ QT_BEGIN_NAMESPACE
@@ -3386,7 +3376,7 @@ index 7ae3398fdb..435b81cb48 100644
                  qWarning("IDXGISwapChain3 not available");
                  return false;
              }
-@@ -6014,8 +6061,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -6016,8 +6063,7 @@ bool QD3D12SwapChain::createOrResize()
          for (int i = 0; i < QD3D12_FRAMES_IN_FLIGHT; ++i) {
              hr = rhiD->dev->CreateFence(0,
                                          D3D12_FENCE_FLAG_NONE,
@@ -3396,7 +3386,7 @@ index 7ae3398fdb..435b81cb48 100644
              if (FAILED(hr)) {
                  qWarning("Failed to create fence for swapchain: %s",
                           qPrintable(QSystemError::windowsComString(hr)));
-@@ -6044,7 +6090,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -6046,7 +6092,7 @@ bool QD3D12SwapChain::createOrResize()
  
      for (UINT i = 0; i < BUFFER_COUNT; ++i) {
          ID3D12Resource *colorBuffer;
@@ -3405,7 +3395,7 @@ index 7ae3398fdb..435b81cb48 100644
          if (FAILED(hr)) {
              qWarning("Failed to get buffer %u for D3D12 swapchain: %s",
                       i, qPrintable(QSystemError::windowsComString(hr)));
-@@ -6098,8 +6144,7 @@ bool QD3D12SwapChain::createOrResize()
+@@ -6100,8 +6146,7 @@ bool QD3D12SwapChain::createOrResize()
                                                    D3D12_RESOURCE_STATE_RENDER_TARGET,
                                                    &clearValue,
                                                    &allocation,
@@ -3508,10 +3498,10 @@ index f9b36b4852..f09123f327 100644
      qCDebug(lcQpaFonts) << __FUNCTION__ << systemFont;
      return systemFont;
 diff --git a/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp b/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
-index 14dd064c33..026211c0a3 100644
+index 24417ac79e..0a42a9df8e 100644
 --- a/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
 +++ b/src/gui/text/windows/qwindowsfontenginedirectwrite.cpp
-@@ -671,8 +671,7 @@ bool QWindowsFontEngineDirectWrite::supportsHorizontalSubPixelPositions() const
+@@ -673,8 +673,7 @@ bool QWindowsFontEngineDirectWrite::supportsHorizontalSubPixelPositions() const
  QFontEngine::Properties QWindowsFontEngineDirectWrite::properties() const
  {
      IDWriteFontFace2 *directWriteFontFace2;
@@ -3521,7 +3511,7 @@ index 14dd064c33..026211c0a3 100644
          DWRITE_FONT_METRICS1 metrics;
          directWriteFontFace2->GetMetrics(&metrics);
  
-@@ -739,8 +738,7 @@ QImage QWindowsFontEngineDirectWrite::imageForGlyph(glyph_t t,
+@@ -741,8 +740,7 @@ QImage QWindowsFontEngineDirectWrite::imageForGlyph(glyph_t t,
              : DWRITE_GRID_FIT_MODE_DEFAULT;
  
      IDWriteFactory2 *factory2 = nullptr;
@@ -3531,7 +3521,7 @@ index 14dd064c33..026211c0a3 100644
      IDWriteGlyphRunAnalysis *glyphAnalysis = NULL;
      if (!SUCCEEDED(hr)) {
          qErrnoWarning(hr, "%s: Failed to query IDWriteFactory2 interface.", __FUNCTION__);
-@@ -1063,8 +1061,7 @@ glyph_metrics_t QWindowsFontEngineDirectWrite::alphaMapBoundingBox(glyph_t glyph
+@@ -1065,8 +1063,7 @@ glyph_metrics_t QWindowsFontEngineDirectWrite::alphaMapBoundingBox(glyph_t glyph
              : DWRITE_GRID_FIT_MODE_DEFAULT;
  
      IDWriteFactory2 *factory2 = nullptr;
@@ -5463,7 +5453,7 @@ index aaa3933acd..d343d2109e 100644
      else
          qErrnoWarning("RegisterTouchWindow() failed for window '%s'.", qPrintable(window()->objectName()));
 diff --git a/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp b/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
-index 14ef72ad56..86e6fe3171 100644
+index ab6f34418c..4bf87deae6 100644
 --- a/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
 +++ b/src/plugins/styles/windowsvista/qwindowsvistastyle.cpp
 @@ -3974,6 +3974,21 @@ void QWindowsVistaStyle::drawComplexControl(ComplexControl control, const QStyle

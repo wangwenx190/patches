@@ -1,4 +1,4 @@
-From 414195f2afcd23c9c8310527881cb6495783b718 Mon Sep 17 00:00:00 2001
+From 9ca2d6cbc5d4c85b431a96933e8e55b714e63d5b Mon Sep 17 00:00:00 2001
 From: Yuhang Zhao <2546789017@qq.com>
 Date: Fri, 17 Jun 2022 20:33:03 +0800
 Subject: [PATCH] wangwenx190: Custom tweaks
@@ -51,7 +51,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/corelib/kernel/qfunctions_win.cpp         |  10 +-
  src/corelib/plugin/qsystemlibrary.cpp         |  46 +-
  src/corelib/text/qlocale_win.cpp              |  23 +-
- src/corelib/thread/qfutex_win_p.h             |  56 +-
+ src/corelib/thread/qfutex_win_p.h             |  58 +-
  src/corelib/thread/qlocking_p.h               |   7 +-
  src/corelib/thread/qmutex.cpp                 |   2 +
  src/corelib/thread/qmutex_p.h                 |   9 +-
@@ -98,7 +98,7 @@ Signed-off-by: Yuhang Zhao <2546789017@qq.com>
  src/widgets/dialogs/qwizard.cpp               |  72 ++-
  src/widgets/dialogs/qwizard_win.cpp           | 287 ++++++----
  src/widgets/dialogs/qwizard_win_p.h           |  10 +-
- 79 files changed, 2660 insertions(+), 880 deletions(-)
+ 79 files changed, 2662 insertions(+), 880 deletions(-)
  create mode 100644 build-test.bat
  create mode 100644 cmake/VC-LTL.cmake
  create mode 100644 cmake/YY-Thunks.cmake
@@ -1883,10 +1883,10 @@ index 43324fbfb6..0162e74ab2 100644
      // mingw and clang still have to use Win32 API
      unsigned long cnt = 0;
 diff --git a/src/corelib/thread/qfutex_win_p.h b/src/corelib/thread/qfutex_win_p.h
-index 75a12bd82c..58f7865bd6 100644
+index 75a12bd82c..29a7615f3a 100644
 --- a/src/corelib/thread/qfutex_win_p.h
 +++ b/src/corelib/thread/qfutex_win_p.h
-@@ -19,36 +19,80 @@
+@@ -19,36 +19,82 @@
  #include <qdeadlinetimer.h>
  #include <qtsan_impl.h>
  
@@ -1902,6 +1902,8 @@ index 75a12bd82c..58f7865bd6 100644
  
  QT_BEGIN_NAMESPACE
  
++using namespace Qt::StringLiterals;
++
  namespace QtWindowsFutex {
 -constexpr inline bool futexAvailable() { return true; }
 +inline bool futexAvailable()
